@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sri-vishnu-billing",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+
+  // The React build is served as static assets. Only /api/* runs the Worker;
+  // every other path falls back to index.html so client-side routes work.
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sri-vishnu-billing-db",
+      // Replace with the id printed by `npx wrangler d1 create sri-vishnu-billing-db`
+      // before the first deploy. Local development works with this placeholder.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "vars": {
+    // PBKDF2-SHA256 work factor. 30000 keeps a password change (two hashes)
+    // inside the Workers Free plan's 10 ms CPU limit. On Workers Paid, raise to
+    // 100000 (the runtime maximum); existing hashes upgrade on next login.
+    "PASSWORD_HASH_ITERATIONS": "30000"
+  },
+
+  // Daily housekeeping at 02:00 IST (20:30 UTC): purge expired sessions and old
+  // login-attempt rows so the free 500 MB database does not fill with junk.
+  "triggers": {
+    "crons": ["30 20 * * *"]
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
