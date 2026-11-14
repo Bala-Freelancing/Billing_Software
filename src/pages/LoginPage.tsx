@@ -43,8 +43,8 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center">
           <img src="/favicon.svg" alt="" className="mx-auto h-12 w-12" />
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Gayathri Billing</h1>
-          <p className="mt-1 text-sm text-slate-600">Sign in to continue</p>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Sri Vishnu Communication</h1>
+          <p className="mt-1 text-sm text-slate-600">Billing · Sign in to continue</p>
         </div>
 
         <form

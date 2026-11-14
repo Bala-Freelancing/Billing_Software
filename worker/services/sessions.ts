@@ -7,8 +7,8 @@ import type { Role, SessionUser } from "../../shared/auth";
 import { bytesToBase64Url, bytesToHex } from "../lib/encoding";
 import type { AppEnv } from "../types";
 
-/** Sent as `__Host-gb_session`: HTTPS only, whole site, no subdomains. */
-const COOKIE_NAME = "gb_session";
+/** Sent as `__Host-billing_session`: HTTPS only, whole site, no subdomains. */
+const COOKIE_NAME = "billing_session";
 const TOKEN_BYTES = 32;
 /** A token longer than this cannot be ours; reject before hashing. */
 const MAX_TOKEN_LENGTH = 64;

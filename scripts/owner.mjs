@@ -4,8 +4,8 @@
 // first account or recovering a forgotten owner password requires access to
 // the Cloudflare account itself, so a website visitor can never do it.
 //
-//   npm run owner:create -- --local  --username owner --name "Gayathri Owner"
-//   npm run owner:create -- --remote --username owner --name "Gayathri Owner"
+//   npm run owner:create -- --local  --username owner --name "Shop Owner"
+//   npm run owner:create -- --remote --username owner --name "Shop Owner"
 //   npm run owner:reset-password -- --remote --username owner
 //
 // The password is typed at a hidden prompt (never a command-line argument, so
@@ -79,7 +79,7 @@ function query(target, sqlText) {
 }
 
 function executeFile(target, sqlText) {
-  const dir = mkdtempSync(path.join(tmpdir(), "gb-owner-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "billing-owner-"));
   const file = path.join(dir, "change.sql");
   try {
     writeFileSync(file, sqlText, { mode: 0o600 });
@@ -183,7 +183,7 @@ async function main() {
   if (command === "create") {
     const displayName = (values.name ?? "").trim();
     if (displayName.length < 1 || displayName.length > 80 || [...displayName].some((ch) => ch.charCodeAt(0) < 32)) {
-      fail('--name is required (1–80 characters), e.g. --name "Gayathri Owner".');
+      fail('--name is required (1–80 characters), e.g. --name "Shop Owner".');
     }
     if (existing.length) fail(`User "${username}" already exists. Use owner:reset-password instead.`);
 

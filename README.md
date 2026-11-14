@@ -1,6 +1,6 @@
-# Gayathri Billing
+# Sri Vishnu Communication — Billing
 
-Billing software for Gayathri Communications: purchases, GST sales invoices, credit
+Billing software for Sri Vishnu Communication: purchases, GST sales invoices, credit
 tracking, GST-slab reports for the auditor, and sales statistics.
 
 Runs entirely on Cloudflare (Workers + D1) and is designed to stay on the **free plan**.
@@ -34,7 +34,7 @@ No Cloudflare account is needed for local development — the database runs loca
 ```bash
 npm ci                                   # install exact locked versions
 npm run db:migrate:local                 # create the local database tables
-npm run owner:create -- --local --username owner --name "Gayathri Owner"
+npm run owner:create -- --local --username owner --name "Shop Owner"
 npm run dev                              # open http://localhost:5173
 ```
 
@@ -65,7 +65,7 @@ Use Chrome or Edge locally. Safari refuses the secure session cookie on
 2. Create the production database and copy the `database_id` it prints into
    `wrangler.jsonc` (replace the `00000000-…` placeholder):
    ```bash
-   npx wrangler d1 create gayathri-billing-db
+   npx wrangler d1 create sri-vishnu-billing-db
    ```
 3. Deploy (runs all checks, applies migrations to the production database, then deploys):
    ```bash
@@ -73,7 +73,7 @@ Use Chrome or Edge locally. Safari refuses the secure session cookie on
    ```
 4. Create the owner account on the production database:
    ```bash
-   npm run owner:create -- --remote --username owner --name "Gayathri Owner"
+   npm run owner:create -- --remote --username owner --name "Shop Owner"
    ```
 5. Open the `*.workers.dev` address that the deploy printed and sign in.
 

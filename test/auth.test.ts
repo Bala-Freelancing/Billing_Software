@@ -38,7 +38,7 @@ describe("login", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ user: { id: user.id, username: user.username, displayName: "Test Owner", role: "owner" } });
 
-    const header = res.headers.getSetCookie().find((c) => c.startsWith("__Host-gb_session="));
+    const header = res.headers.getSetCookie().find((c) => c.startsWith("__Host-billing_session="));
     expect(header).toBeDefined();
     expect(header).toMatch(/HttpOnly/);
     expect(header).toMatch(/Secure/);
@@ -181,7 +181,7 @@ describe("session", () => {
     expect(me.status).toBe(200);
     expect(await me.json()).toMatchObject({ user: { id: user.id } });
 
-    for (const bad of [null, "__Host-gb_session=garbage", `__Host-gb_session=${"a".repeat(500)}`, "__Host-gb_session=../../etc"]) {
+    for (const bad of [null, "__Host-billing_session=garbage", `__Host-billing_session=${"a".repeat(500)}`, "__Host-billing_session=../../etc"]) {
       const res = await call(env, "/api/auth/me", { cookie: bad });
       expect(res.status).toBe(401);
       expect(await errorCode(res)).toBe("UNAUTHENTICATED");

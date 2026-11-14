@@ -25,7 +25,7 @@ export function AppLayout() {
           <div className="flex items-center gap-6">
             <NavLink to="/" className="flex items-center gap-2 font-bold text-slate-900">
               <img src="/favicon.svg" alt="" className="h-7 w-7" />
-              <span className="hidden sm:inline">Gayathri Billing</span>
+              <span className="hidden sm:inline">Sri Vishnu Communication</span>
             </NavLink>
             <nav className="flex items-center gap-1">
               <NavLink to="/" end className={navLinkClass}>

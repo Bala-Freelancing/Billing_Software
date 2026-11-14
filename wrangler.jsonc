@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "gayathri-billing",
+  "name": "sri-vishnu-billing",
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
 
@@ -14,8 +14,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "gayathri-billing-db",
-      // Replace with the id printed by `npx wrangler d1 create gayathri-billing-db`
+      "database_name": "sri-vishnu-billing-db",
+      // Replace with the id printed by `npx wrangler d1 create sri-vishnu-billing-db`
       // before the first deploy. Local development works with this placeholder.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"

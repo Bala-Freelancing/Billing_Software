@@ -15,9 +15,9 @@ export interface TestContext {
 
 /** A fresh, fully migrated local D1 database for one test file. */
 export async function createTestContext(): Promise<TestContext> {
-  const template = process.env.GB_TEST_DB_TEMPLATE;
+  const template = process.env.TEST_DB_TEMPLATE;
   if (!template) throw new Error("global setup did not run");
-  const dir = mkdtempSync(path.join(tmpdir(), "gb-test-file-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "billing-test-file-"));
   cpSync(template, dir, { recursive: true });
 
   const proxy = await getPlatformProxy<Env>({ persist: { path: path.join(dir, "v3") } });
@@ -95,7 +95,7 @@ export async function call(env: Env, pathname: string, options: CallOptions = {}
 
 /** Extracts "name=value" of the session cookie from a response, or null if cleared/absent. */
 export function sessionCookie(res: Response): string | null {
-  const header = res.headers.getSetCookie().find((c) => c.startsWith("__Host-gb_session="));
+  const header = res.headers.getSetCookie().find((c) => c.startsWith("__Host-billing_session="));
   if (!header) return null;
   const pair = header.split(";")[0] ?? "";
   return pair.endsWith("=") ? "" : pair;

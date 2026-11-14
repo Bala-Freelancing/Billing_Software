@@ -1,6 +1,6 @@
-# Gayathri Billing — working rules
+# Sri Vishnu Communication Billing — working rules
 
-Billing software for Gayathri Communications (retail shop, Tamil Nadu). It replaces an
+Billing software for Sri Vishnu Communication (retail shop, Tamil Nadu). It replaces an
 existing billing system and **goes to production**: real invoices, real GST filings,
 real money. Treat every change accordingly.
 
@@ -40,7 +40,7 @@ real money. Treat every change accordingly.
 
 ## Security
 
-- Session cookie `__Host-gb_session`: HttpOnly, Secure, SameSite=Strict. The DB stores
+- Session cookie `__Host-billing_session`: HttpOnly, Secure, SameSite=Strict. The DB stores
   only the token's SHA-256.
 - State-changing requests must pass the same-origin check (`sameOriginOnly`).
 - Never log passwords, tokens or full request bodies. Never commit secrets.
