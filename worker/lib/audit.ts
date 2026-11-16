@@ -28,7 +28,14 @@ export type AuditAction =
   | "receipt.created"
   | "receipt.cancelled"
   | "payment.created"
-  | "payment.cancelled";
+  | "payment.cancelled"
+  | "ledger.created"
+  | "ledger.updated"
+  | "expense.created"
+  | "expense.updated"
+  | "expense.approved"
+  | "expense.rejected"
+  | "expense.cancelled";
 
 export interface AuditEntry {
   action: AuditAction;

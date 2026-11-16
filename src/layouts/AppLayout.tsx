@@ -20,8 +20,8 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Receipt", to: "/receipts" },
       { label: "Payment", to: "/payments" },
       { label: "Outstanding", to: "/outstanding" },
-      { label: "Voucher" },
-      { label: "Voucher Approval" },
+      { label: "Voucher", to: "/expenses" },
+      { label: "Voucher Approval", to: "/expenses/approval" },
     ],
   },
   {
@@ -45,6 +45,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Parties (Ledger)", to: "/parties" },
       { label: "Products", to: "/products" },
       { label: "Product Opening Stock", to: "/opening-stock" },
+      { label: "Ledgers", to: "/ledgers" },
       { label: "Ledger Group" },
       { label: "Product Group" },
       { label: "Settings & GST", to: "/settings" },

@@ -21,31 +21,35 @@ export type SystemLedger =
 
 export interface JournalLine {
   ledger?: SystemLedger;
+  /** A non-system ledger by id (owner-created heads such as Rent). */
+  ledgerId?: number;
   partyId?: number;
   debit: number;
   credit: number;
 }
 
-export type SourceType = "purchase" | "purchase_return" | "sale" | "sales_return" | "receipt" | "payment";
+export type SourceType = "purchase" | "purchase_return" | "sale" | "sales_return" | "receipt" | "payment" | "journal";
+
+type Target = { ledger: SystemLedger } | { ledgerId: number } | { partyId: number };
 
 /** Adds a debit (positive) or credit (negative) line; zero amounts are skipped. */
 export class JournalBuilder {
   readonly lines: JournalLine[] = [];
 
-  debit(target: { ledger: SystemLedger } | { partyId: number }, amount: number): this {
+  debit(target: Target, amount: number): this {
     return this.add(target, amount, 0);
   }
 
-  credit(target: { ledger: SystemLedger } | { partyId: number }, amount: number): this {
+  credit(target: Target, amount: number): this {
     return this.add(target, 0, amount);
   }
 
   /** Positive amount debits, negative credits (used for round-off). */
-  signed(target: { ledger: SystemLedger } | { partyId: number }, amount: number): this {
+  signed(target: Target, amount: number): this {
     return amount >= 0 ? this.debit(target, amount) : this.credit(target, -amount);
   }
 
-  private add(target: { ledger: SystemLedger } | { partyId: number }, debit: number, credit: number): this {
+  private add(target: Target, debit: number, credit: number): this {
     if (!Number.isSafeInteger(debit) || !Number.isSafeInteger(credit) || debit < 0 || credit < 0) {
       throw new Error("Journal amounts must be non-negative integer paise");
     }
@@ -68,6 +72,7 @@ const SOURCE_TABLE: Record<SourceType, string> = {
   sales_return: "sales_returns",
   receipt: "money_vouchers",
   payment: "money_vouchers",
+  journal: "general_vouchers",
 };
 
 /**
@@ -91,7 +96,7 @@ export function journalStatements(
       .prepare(
         `INSERT INTO journal_lines (entry_id, ledger_id, party_id, debit_paise, credit_paise)
          SELECT (SELECT e.id FROM journal_entries e WHERE e.source_type = ?1 AND e.source_id = (SELECT id FROM ${table} WHERE uid = ?2)),
-                (SELECT l.id FROM ledgers l WHERE l.system_key = j.value ->> '$.ledger'),
+                COALESCE(j.value ->> '$.ledgerId', (SELECT l.id FROM ledgers l WHERE l.system_key = j.value ->> '$.ledger')),
                 j.value ->> '$.partyId',
                 j.value ->> '$.debit',
                 j.value ->> '$.credit'
