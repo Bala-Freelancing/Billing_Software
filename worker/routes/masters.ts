@@ -20,46 +20,11 @@ import {
   type ShopSettings,
   type Unit,
 } from "../../shared/masters";
-import { auditStatement, type AuditAction } from "../lib/audit";
 import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
-import { clientIp, userAgent } from "../lib/request";
+import { audit, auditIfChanged, idParam, nextStamp } from "../lib/route";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
-import type { Context } from "hono";
-
-type Ctx = Context<AppEnv>;
-
-const idParam = (c: Ctx) => {
-  const id = Number(c.req.param("id"));
-  if (!Number.isSafeInteger(id) || id <= 0) throw notFound("Record");
-  return id;
-};
-
-/** Next updated_at: never equal to the previous value, so optimistic locking always detects a change. */
-const nextStamp = (previous: number) => Math.max(Date.now(), previous + 1);
-
-function audit(c: Ctx, action: AuditAction, details: Record<string, unknown>) {
-  return auditStatement(c.env.DB, {
-    action,
-    userId: c.get("user").id,
-    ip: clientIp(c),
-    userAgent: userAgent(c),
-    at: Date.now(),
-    details,
-  });
-}
-
-/**
- * Audit row that is written only if the immediately preceding statement in the
- * same batch changed a row, so a lost optimistic-lock race leaves no audit entry.
- */
-function auditIfChanged(c: Ctx, action: AuditAction, details: Record<string, unknown>) {
-  return c.env.DB.prepare(
-    `INSERT INTO audit_log (created_at, user_id, action, ip, user_agent, details)
-     SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE changes() > 0`,
-  ).bind(Date.now(), c.get("user").id, action, clientIp(c), userAgent(c), JSON.stringify(details));
-}
 
 // ── Row mapping ──────────────────────────────────────────────────────────────
 
@@ -114,7 +79,10 @@ interface ProductRow {
 const PRODUCT_SELECT = `
   SELECT p.id, p.brand, p.name, p.category, p.hsn_code, p.gst_slab_id, g.rate_bp, p.unit,
          p.mrp_paise, p.selling_price_paise, p.barcode, p.tracks_serial, p.is_active, p.updated_at,
-         (SELECT COUNT(*) FROM product_units u WHERE u.product_id = p.id AND u.status = 'in_stock') AS in_stock
+         CASE WHEN p.tracks_serial = 1
+           THEN (SELECT COUNT(*) FROM product_units u WHERE u.product_id = p.id AND u.status = 'in_stock')
+           ELSE (SELECT COALESCE(SUM(m.qty_delta), 0) FROM stock_movements m WHERE m.product_id = p.id AND m.is_void = 0)
+         END AS in_stock
     FROM products p
     JOIN gst_slabs g ON g.id = p.gst_slab_id`;
 
@@ -495,7 +463,7 @@ masterRoutes
     if (!code || code.length > 64) return c.json({ kind: "none", code } satisfies ScanResult);
 
     const unit = await db
-      .prepare("SELECT serial, status, product_id FROM product_units WHERE serial = ?1")
+      .prepare("SELECT serial, status, product_id FROM product_units WHERE serial = ?1 ORDER BY status = 'void', id DESC LIMIT 1")
       .bind(code)
       .first<{ serial: string; status: string; product_id: number }>();
     if (unit) {
