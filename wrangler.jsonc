@@ -15,9 +15,8 @@
     {
       "binding": "DB",
       "database_name": "sri-vishnu-billing-db",
-      // Replace with the id printed by `npx wrangler d1 create sri-vishnu-billing-db`
-      // before the first deploy. Local development works with this placeholder.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Production database (Asia-Pacific), created by the first Deploy run.
+      "database_id": "3d3cf49b-ab01-4c19-aa08-ac5decd7965c",
       "migrations_dir": "migrations"
     }
   ],
