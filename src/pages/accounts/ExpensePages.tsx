@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { formatDate, todayIst } from "../../../shared/gst";
-import type { ExpenseDetail, ExpenseStatus, ExpenseSummary, Ledger } from "../../../shared/ledgers";
-import type { ListResponse } from "../../../shared/masters";
-import { formatPaise, parseRupees } from "../../../shared/money";
+import { HOME_STATE_CODE } from "../../../shared/india";
+import { computeExpense, type ExpenseDetail, type ExpenseStatus, type ExpenseSummary, type Ledger } from "../../../shared/ledgers";
+import type { GstSlab, ListResponse } from "../../../shared/masters";
+import { formatPaise, formatRate, parseRupees } from "../../../shared/money";
 import { MODE_LABEL, MODES, type PaymentMode } from "../../../shared/vouchers";
-import { Alert, Badge, Button, Card, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
+import { Alert, Badge, Button, Card, CheckboxField, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import { CancelBox } from "../purchases/PurchaseDetailPage";
@@ -86,11 +87,12 @@ interface LineState {
   key: string;
   ledgerId: number;
   amount: string;
+  gstRateBp: number;
   narration: string;
 }
-const newLine = (): LineState => ({ key: crypto.randomUUID(), ledgerId: 0, amount: "", narration: "" });
+const newLine = (): LineState => ({ key: crypto.randomUUID(), ledgerId: 0, amount: "", gstRateBp: 0, narration: "" });
 
-function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; heads: Ledger[] }) {
+function ExpenseForm({ existing, heads, slabs }: { existing: ExpenseDetail | null; heads: Ledger[]; slabs: GstSlab[] }) {
   const navigate = useNavigate();
   const [uid] = useState(() => crypto.randomUUID());
   const [voucherDate, setVoucherDate] = useState(existing?.voucherDate ?? todayIst());
@@ -98,12 +100,23 @@ function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; head
   const [reference, setReference] = useState(existing?.reference ?? "");
   const [remarks, setRemarks] = useState(existing?.remarks ?? "");
   const [lines, setLines] = useState<LineState[]>(
-    existing ? existing.lines.map((l) => ({ key: crypto.randomUUID(), ledgerId: l.ledgerId, amount: (l.amountPaise / 100).toFixed(2), narration: l.narration })) : [newLine()],
+    existing
+      ? existing.lines.map((l) => ({ key: crypto.randomUUID(), ledgerId: l.ledgerId, amount: (l.amountPaise / 100).toFixed(2), gstRateBp: l.gstRateBp, narration: l.narration }))
+      : [newLine()],
   );
+  // GST is off by default: most expenses (rent, transport) carry no GST.
+  const [gstBill, setGstBill] = useState(existing?.gstBill ?? false);
+  const [supplierName, setSupplierName] = useState(existing?.supplierName ?? "");
+  const [supplierGstin, setSupplierGstin] = useState(existing?.supplierGstin ?? "");
+  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState(existing?.supplierInvoiceNo ?? "");
+  const [supplierInvoiceDate, setSupplierInvoiceDate] = useState(existing?.supplierInvoiceDate ?? todayIst());
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const total = lines.reduce((s, l) => s + (parseRupees(l.amount || "0") ?? 0), 0);
+  // Preview only; the server recomputes. Interstate is decided by the GSTIN's state.
+  const interstate = gstBill && supplierGstin.length >= 2 && supplierGstin.slice(0, 2) !== HOME_STATE_CODE;
+  const totals = computeExpense(lines.map((l) => ({ amountPaise: parseRupees(l.amount || "0") ?? 0, gstRateBp: gstBill ? l.gstRateBp : 0 })), interstate);
+  const total = totals.totalPaise;
   const update = (key: string, patch: Partial<LineState>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   async function submit(e: FormEvent) {
@@ -119,7 +132,16 @@ function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; head
     setErrors(next);
     if (Object.keys(next).length) return setFormError("Please fix the highlighted fields.");
     setSaving(true);
-    const body = { uid: existing ? undefined : uid, voucherDate, mode, reference, remarks, lines: lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: parseRupees(l.amount), narration: l.narration })) };
+    const body = {
+      uid: existing ? undefined : uid,
+      voucherDate,
+      mode,
+      reference,
+      remarks,
+      gstBill,
+      ...(gstBill ? { supplierName, supplierGstin, supplierInvoiceNo, supplierInvoiceDate } : {}),
+      lines: lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: parseRupees(l.amount), gstRateBp: gstBill ? l.gstRateBp : 0, narration: l.narration })),
+    };
     try {
       const v = existing
         ? await api<ExpenseDetail>(`/expenses/${existing.id}`, { method: "PUT", body: { ...body, uid: crypto.randomUUID(), updatedAt: existing.updatedAt } })
@@ -145,16 +167,39 @@ function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; head
         <TextField label={mode === "cheque" ? "Cheque no." : "Reference"} value={reference} onChange={(e) => setReference(e.target.value)} errors={errors.reference} />
         <TextField label="Remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
       </Card>
+      <Card className="space-y-4 p-5">
+        <CheckboxField
+          label="GST bill (claim input tax credit)"
+          description="Turn on only when the bill charges GST and shows the supplier's GSTIN, e.g. a GST-registered landlord."
+          checked={gstBill}
+          onChange={setGstBill}
+        />
+        {gstBill && (
+          <div className="grid gap-4 md:grid-cols-4">
+            <TextField label="Supplier name" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} errors={errors.supplierName} />
+            <TextField label="Supplier GSTIN" value={supplierGstin} onChange={(e) => setSupplierGstin(e.target.value.toUpperCase())} errors={errors.supplierGstin} hint={interstate ? "Other state → IGST" : "Tamil Nadu → CGST + SGST"} />
+            <TextField label="Bill no." value={supplierInvoiceNo} onChange={(e) => setSupplierInvoiceNo(e.target.value)} errors={errors.supplierInvoiceNo} />
+            <TextField label="Bill date" type="date" max={voucherDate} value={supplierInvoiceDate} onChange={(e) => setSupplierInvoiceDate(e.target.value)} errors={errors.supplierInvoiceDate} />
+          </div>
+        )}
+      </Card>
       <Card className="space-y-3 p-5">
         <h2 className="text-sm font-semibold">Expenses</h2>
         {heads.length === 0 && <Alert tone="info">No active expense heads. Add one under <Link className="underline" to="/ledgers">Ledgers</Link>.</Alert>}
         {lines.map((l) => (
-          <div key={l.key} className="grid items-start gap-3 md:grid-cols-[2fr_1fr_2fr_auto]">
+          <div key={l.key} className={`grid items-start gap-3 ${gstBill ? "md:grid-cols-[2fr_1fr_1fr_2fr_auto]" : "md:grid-cols-[2fr_1fr_2fr_auto]"}`}>
             <SelectField label="" aria-label="Expense head" value={l.ledgerId} onChange={(e) => update(l.key, { ledgerId: Number(e.target.value) })} errors={errors[`line-${l.key}`]}>
               <option value={0}>Choose expense head…</option>
               {heads.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
             </SelectField>
-            <TextField label="" aria-label="Amount" placeholder="Amount ₹" inputMode="decimal" value={l.amount} onChange={(e) => update(l.key, { amount: e.target.value })} />
+            <TextField label="" aria-label="Amount" placeholder={gstBill ? "Amount before GST ₹" : "Amount ₹"} inputMode="decimal" value={l.amount} onChange={(e) => update(l.key, { amount: e.target.value })} />
+            {gstBill && (
+              <SelectField label="" aria-label="GST rate" value={l.gstRateBp} onChange={(e) => update(l.key, { gstRateBp: Number(e.target.value) })}>
+                {[...new Set([0, ...slabs.filter((g) => g.isActive || g.rateBp === l.gstRateBp).map((g) => g.rateBp)])].sort((a, b) => a - b).map((r) => (
+                  <option key={r} value={r}>GST {formatRate(r)}</option>
+                ))}
+              </SelectField>
+            )}
             <TextField label="" aria-label="Narration" placeholder="Narration (optional)" value={l.narration} onChange={(e) => update(l.key, { narration: e.target.value })} />
             <Button type="button" variant="secondary" disabled={lines.length === 1} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>Remove</Button>
           </div>
@@ -162,7 +207,15 @@ function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; head
         {errors.lines && <p className="text-sm text-red-700">{errors.lines[0]}</p>}
         <div className="flex items-center justify-between">
           <Button type="button" variant="secondary" disabled={lines.length >= 20} onClick={() => setLines((ls) => [...ls, newLine()])}>Add line</Button>
-          <p className="text-sm font-semibold tabular-nums">Total ₹{formatPaise(total)}</p>
+          <div className="text-right text-sm tabular-nums">
+            {gstBill && totals.cgstPaise + totals.sgstPaise + totals.igstPaise > 0 && (
+              <p className="text-slate-600">
+                Taxable ₹{formatPaise(totals.taxablePaise)} ·{" "}
+                {interstate ? `IGST ₹${formatPaise(totals.igstPaise)}` : `CGST ₹${formatPaise(totals.cgstPaise)} · SGST ₹${formatPaise(totals.sgstPaise)}`}
+              </p>
+            )}
+            <p className="font-semibold">Total ₹{formatPaise(total)}</p>
+          </div>
         </div>
       </Card>
       <div className="flex items-center justify-end gap-3">
@@ -176,14 +229,15 @@ function ExpenseForm({ existing, heads }: { existing: ExpenseDetail | null; head
 export function ExpenseFormPage() {
   const { id } = useParams();
   const heads = useFetch<ListResponse<Ledger>>("/ledgers?nature=expense&active=1");
+  const slabs = useFetch<{ items: GstSlab[] }>("/gst-slabs");
   const existing = useFetch<ExpenseDetail>(id ? `/expenses/${id}` : null);
   if (heads.error || existing.error) return <Alert tone="error">{heads.error ?? existing.error}</Alert>;
-  if (!heads.data || (id && !existing.data)) return <Spinner />;
+  if (!heads.data || !slabs.data || (id && !existing.data)) return <Spinner />;
   if (existing.data && existing.data.status !== "draft") return <Alert tone="error">Only drafts can be edited.</Alert>;
   return (
     <div>
       <PageHeader title={id ? "Edit draft voucher" : "New voucher"} subtitle={<Link to="/expenses" className="text-slate-600 hover:underline">← All vouchers</Link>} />
-      <ExpenseForm existing={existing.data} heads={heads.data.items.filter((h) => !h.isSystem)} />
+      <ExpenseForm existing={existing.data} heads={heads.data.items.filter((h) => !h.isSystem)} slabs={slabs.data.items} />
     </div>
   );
 }
@@ -238,11 +292,29 @@ export function ExpenseDetailPage() {
         <div><p className="text-slate-500">Paid by</p><p className="font-medium">{MODE_LABEL[v.mode]}{v.reference && ` · ${v.reference}`}</p></div>
         <div><p className="text-slate-500">Total</p><p className="text-lg font-semibold tabular-nums">₹{formatPaise(v.totalPaise)}</p></div>
         {v.remarks && <div><p className="text-slate-500">Remarks</p><p>{v.remarks}</p></div>}
+        {v.gstBill && (
+          <div className="md:col-span-4">
+            <p className="text-slate-500">GST bill</p>
+            <p>{v.supplierName} · {v.supplierGstin} · Bill {v.supplierInvoiceNo} dated {v.supplierInvoiceDate ? formatDate(v.supplierInvoiceDate) : ""}</p>
+            <p className="text-slate-600">Taxable ₹{formatPaise(v.taxablePaise)} · {v.interstate ? `IGST ₹${formatPaise(v.igstPaise)}` : `CGST ₹${formatPaise(v.cgstPaise)} · SGST ₹${formatPaise(v.sgstPaise)}`}</p>
+          </div>
+        )}
       </Card>
       <Card className="p-5">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500"><tr><th className="py-1">Expense head</th><th className="py-1">Narration</th><th className="py-1 text-right">Amount ₹</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">{v.lines.map((l, i) => <tr key={i}><td className="py-2">{l.ledgerName}</td><td className="py-2 text-slate-600">{l.narration}</td><td className="py-2 text-right tabular-nums">{formatPaise(l.amountPaise)}</td></tr>)}</tbody>
+          <thead className="text-left text-xs uppercase text-slate-500">
+            <tr><th className="py-1">Expense head</th><th className="py-1">Narration</th>{v.gstBill && <th className="py-1 text-right">GST</th>}<th className="py-1 text-right">Amount ₹</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {v.lines.map((l, i) => (
+              <tr key={i}>
+                <td className="py-2">{l.ledgerName}</td>
+                <td className="py-2 text-slate-600">{l.narration}</td>
+                {v.gstBill && <td className="py-2 text-right tabular-nums">{formatRate(l.gstRateBp)} · ₹{formatPaise(l.taxPaise)}</td>}
+                <td className="py-2 text-right tabular-nums">{formatPaise(l.amountPaise)}</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </Card>
       {v.journal.length > 0 && (

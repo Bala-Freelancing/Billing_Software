@@ -32,6 +32,16 @@ async function ledgerBalance(where: string, ...binds: unknown[]) {
   return r?.b ?? 0;
 }
 
+/** A GSTIN with a correct check digit for the given state (test data only). */
+async function validGstin(state: string) {
+  const { gstinProblem } = await import("../shared/india");
+  for (const c of "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    const g = `${state}AAACB1234C1Z${c}`;
+    if (!gstinProblem(g)) return g;
+  }
+  throw new Error("no gstin");
+}
+
 beforeAll(async () => {
   ctx = await createTestContext();
   env = ctx.env;
@@ -154,6 +164,34 @@ describe("expense vouchers", () => {
     for (const action of ["expense.created", "expense.updated", "expense.approved", "expense.rejected", "expense.cancelled"]) expect(audit?.a).toContain(action);
     const tb = await env.DB.prepare("SELECT COALESCE(SUM(debit_paise) - SUM(credit_paise), 0) AS d FROM journal_lines jl JOIN journal_entries e ON e.id = jl.entry_id WHERE e.status = 'posted'").first<{ d: number }>();
     expect(tb?.d).toBe(0);
+  });
+
+  it("records GST on a GST bill as input credit (CGST + SGST within Tamil Nadu)", async () => {
+    const before = { cgst: await ledgerBalance("l.system_key = 'input_cgst'"), sgst: await ledgerBalance("l.system_key = 'input_sgst'"), cash: await ledgerBalance("l.system_key = 'cash'") };
+    const d = await json<ExpenseDetail>(await post("/api/expenses", expense({
+      gstBill: true, supplierName: "Lakshmi Estates", supplierGstin: await validGstin("33"), supplierInvoiceNo: "R-11", supplierInvoiceDate: today,
+      lines: [{ ledgerId: rent.id, amountPaise: 2000000, gstRateBp: 1800, narration: "Shop rent" }],
+    })));
+    expect(d).toMatchObject({ gstBill: true, interstate: false, taxablePaise: 2000000, cgstPaise: 180000, sgstPaise: 180000, igstPaise: 0, totalPaise: 2360000 });
+    expect(d.lines[0]).toMatchObject({ gstRateBp: 1800, taxPaise: 360000 });
+    const a = await json<ExpenseDetail>(await post(`/api/expenses/${d.id}/approve`, { updatedAt: d.updatedAt }));
+    expect(a.journal.find((j) => j.account === "Rent")?.debitPaise).toBe(2000000);
+    expect(await ledgerBalance("l.system_key = 'input_cgst'")).toBe(before.cgst + 180000);
+    expect(await ledgerBalance("l.system_key = 'input_sgst'")).toBe(before.sgst + 180000);
+    expect(await ledgerBalance("l.system_key = 'cash'")).toBe(before.cash - 2360000);
+  });
+
+  it("uses IGST for an out-of-state supplier and validates GST bill details", async () => {
+    const d = await json<ExpenseDetail>(await post("/api/expenses", expense({
+      gstBill: true, supplierName: "Blue Dart", supplierGstin: await validGstin("29"), supplierInvoiceNo: "BD9", supplierInvoiceDate: today,
+      lines: [{ ledgerId: rent.id, amountPaise: 10000, gstRateBp: 1800, narration: "" }],
+    })));
+    expect(d).toMatchObject({ interstate: true, igstPaise: 1800, cgstPaise: 0, totalPaise: 11800 });
+    const bad = async (o: Record<string, unknown>) => errorCode(await post("/api/expenses", expense(o)));
+    expect(await bad({ lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1800, narration: "" }] })).toBe("VALIDATION"); // GST without GST bill
+    expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: "33ABC", supplierInvoiceNo: "1", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1800, narration: "" }] })).toBe("VALIDATION");
+    expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: await validGstin("33"), supplierInvoiceNo: "", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1800, narration: "" }] })).toBe("VALIDATION");
+    expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: await validGstin("33"), supplierInvoiceNo: "1", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1700, narration: "" }] })).toBe("VALIDATION");
   });
 
   it("lists drafts first and needs login", async () => {

@@ -1,5 +1,7 @@
 // Ledgers (account heads) and expense vouchers with draft → approve.
 import { z } from "zod";
+import { computeLine } from "./gst";
+import { gstinProblem } from "./india";
 import { MAX_AMOUNT_PAISE } from "./money";
 import { documentDate } from "./purchase";
 import { MODES, type PaymentMode } from "./vouchers";
@@ -49,26 +51,51 @@ export const ledgerListQuery = z.object({
 export const MAX_EXPENSE_LINES = 20;
 export type ExpenseStatus = "draft" | "approved" | "rejected" | "cancelled";
 
-export const expenseSchema = z.object({
-  uid: z.uuid(),
-  voucherDate: documentDate,
-  mode: z.enum(MODES),
-  reference: z.string().trim().max(60),
-  remarks: z.string().trim().max(200),
-  lines: z
-    .array(
-      z.object({
-        ledgerId: z.number().int().positive("Choose an expense head"),
-        amountPaise: z.number().int().min(1, "Enter an amount").max(MAX_AMOUNT_PAISE),
-        narration: z.string().trim().max(120),
-      }),
-    )
-    .min(1, "Add at least one expense")
-    .max(MAX_EXPENSE_LINES),
-}).superRefine((v, ctx) => {
-  if (v.mode === "cheque" && !v.reference) ctx.addIssue({ code: "custom", path: ["reference"], message: "Enter the cheque number" });
-  if (v.lines.reduce((s, l) => s + l.amountPaise, 0) > MAX_AMOUNT_PAISE) ctx.addIssue({ code: "custom", path: ["lines"], message: "Total is too large" });
-});
+export const expenseSchema = z
+  .object({
+    uid: z.uuid(),
+    voucherDate: documentDate,
+    mode: z.enum(MODES),
+    reference: z.string().trim().max(60),
+    remarks: z.string().trim().max(200),
+    /** The bill charges GST and the shop claims it as input tax credit. Usually off. */
+    gstBill: z.boolean().optional().default(false),
+    supplierName: z.string().trim().max(100).optional().default(""),
+    supplierGstin: z.string().trim().toUpperCase().max(15).optional().default(""),
+    supplierInvoiceNo: z.string().trim().max(16).optional().default(""),
+    supplierInvoiceDate: z.string().optional().default(""),
+    lines: z
+      .array(
+        z.object({
+          ledgerId: z.number().int().positive("Choose an expense head"),
+          /** Taxable value (amount before GST). */
+          amountPaise: z.number().int().min(1, "Enter an amount").max(MAX_AMOUNT_PAISE),
+          gstRateBp: z.number().int().min(0).max(10_000).optional().default(0),
+          narration: z.string().trim().max(120),
+        }),
+      )
+      .min(1, "Add at least one expense")
+      .max(MAX_EXPENSE_LINES),
+  })
+  .superRefine((v, ctx) => {
+    if (v.mode === "cheque" && !v.reference) ctx.addIssue({ code: "custom", path: ["reference"], message: "Enter the cheque number" });
+    if (v.lines.reduce((s, l) => s + l.amountPaise, 0) > MAX_AMOUNT_PAISE) ctx.addIssue({ code: "custom", path: ["lines"], message: "Total is too large" });
+    if (v.gstBill) {
+      // Without the supplier's GSTIN and invoice number the credit won't appear in GSTR-2B.
+      if (!v.supplierName) ctx.addIssue({ code: "custom", path: ["supplierName"], message: "Enter the supplier name" });
+      const gstinError = v.supplierGstin ? gstinProblem(v.supplierGstin) : "Enter the supplier's GSTIN";
+      if (gstinError) ctx.addIssue({ code: "custom", path: ["supplierGstin"], message: gstinError });
+      if (!v.supplierInvoiceNo) ctx.addIssue({ code: "custom", path: ["supplierInvoiceNo"], message: "Enter the bill number" });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v.supplierInvoiceDate) || Number.isNaN(Date.parse(v.supplierInvoiceDate))) {
+        ctx.addIssue({ code: "custom", path: ["supplierInvoiceDate"], message: "Enter the bill date" });
+      } else if (v.supplierInvoiceDate > v.voucherDate) {
+        ctx.addIssue({ code: "custom", path: ["supplierInvoiceDate"], message: "Bill date can't be after the voucher date" });
+      }
+      if (v.lines.every((l) => l.gstRateBp === 0)) ctx.addIssue({ code: "custom", path: ["lines"], message: "Choose the GST rate on at least one line" });
+    } else if (v.lines.some((l) => l.gstRateBp !== 0)) {
+      ctx.addIssue({ code: "custom", path: ["lines"], message: "Turn on “GST bill” to enter GST" });
+    }
+  });
 export const updateExpenseSchema = expenseSchema.and(z.object({ updatedAt }));
 export type ExpenseInput = z.input<typeof expenseSchema>;
 
@@ -82,6 +109,13 @@ export const expenseListQuery = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional().default(1),
 });
+
+/** Tax per line and voucher totals; used by the form preview and by the server. */
+export function computeExpense(lines: { amountPaise: number; gstRateBp: number }[], interstate: boolean) {
+  const amounts = lines.map((l) => computeLine({ quantity: 1, ratePaise: l.amountPaise, gstRateBp: l.gstRateBp }, { ratesIncludeGst: false, interstate }));
+  const sum = (k: "taxablePaise" | "cgstPaise" | "sgstPaise" | "igstPaise" | "totalPaise") => amounts.reduce((s, a) => s + a[k], 0);
+  return { lines: amounts, taxablePaise: sum("taxablePaise"), cgstPaise: sum("cgstPaise"), sgstPaise: sum("sgstPaise"), igstPaise: sum("igstPaise"), totalPaise: sum("totalPaise") };
+}
 
 export interface ExpenseSummary {
   id: number;
@@ -99,6 +133,16 @@ export interface ExpenseDetail extends ExpenseSummary {
   remarks: string;
   statusReason: string | null;
   approvedAt: number | null;
-  lines: { ledgerId: number; ledgerName: string; amountPaise: number; narration: string }[];
+  gstBill: boolean;
+  supplierName: string;
+  supplierGstin: string | null;
+  supplierInvoiceNo: string;
+  supplierInvoiceDate: string | null;
+  interstate: boolean;
+  taxablePaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  lines: { ledgerId: number; ledgerName: string; amountPaise: number; gstRateBp: number; taxPaise: number; narration: string }[];
   journal: { account: string; debitPaise: number; creditPaise: number }[];
 }
