@@ -9,6 +9,11 @@ import { AccountPage } from "./pages/AccountPage";
 import { NotFoundPage, RouteErrorPage } from "./pages/ErrorPages";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { PartiesPage } from "./pages/parties/PartiesPage";
+import { PartyFormPage } from "./pages/parties/PartyFormPage";
+import { ProductFormPage } from "./pages/products/ProductFormPage";
+import { ProductsPage } from "./pages/products/ProductsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { GuestOnly, RequireAuth } from "./routes/guards";
 
 const router = createBrowserRouter([
@@ -23,6 +28,13 @@ const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { index: true, element: <HomePage /> },
+              { path: "/products", element: <ProductsPage /> },
+              { path: "/products/new", element: <ProductFormPage key="new" /> },
+              { path: "/products/:id", element: <ProductFormPage /> },
+              { path: "/parties", element: <PartiesPage /> },
+              { path: "/parties/new", element: <PartyFormPage key="new" /> },
+              { path: "/parties/:id", element: <PartyFormPage /> },
+              { path: "/settings", element: <SettingsPage /> },
               { path: "/account", element: <AccountPage /> },
             ],
           },

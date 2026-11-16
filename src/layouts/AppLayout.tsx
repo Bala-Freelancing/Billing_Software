@@ -27,9 +27,18 @@ export function AppLayout() {
               <img src="/favicon.svg" alt="" className="h-7 w-7" />
               <span className="hidden sm:inline">Sri Vishnu Communication</span>
             </NavLink>
-            <nav className="flex items-center gap-1">
+            <nav className="flex flex-wrap items-center gap-1">
               <NavLink to="/" end className={navLinkClass}>
                 Home
+              </NavLink>
+              <NavLink to="/products" className={navLinkClass}>
+                Products
+              </NavLink>
+              <NavLink to="/parties" className={navLinkClass}>
+                Parties
+              </NavLink>
+              <NavLink to="/settings" className={navLinkClass}>
+                Settings
               </NavLink>
               <NavLink to="/account" className={navLinkClass}>
                 Account

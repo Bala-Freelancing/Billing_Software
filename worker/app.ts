@@ -4,6 +4,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { AppError, handleError } from "./lib/errors";
 import { requestContext, sameOriginOnly } from "./middleware";
 import { authRoutes } from "./routes/auth";
+import { masterRoutes } from "./routes/masters";
 import type { AppEnv } from "./types";
 
 export const app = new Hono<AppEnv>();
@@ -33,6 +34,7 @@ app.get("/api/health", async (c) => {
 });
 
 app.route("/api/auth", authRoutes);
+app.route("/api", masterRoutes);
 
 app.notFound((c) => {
   throw new AppError(404, "NOT_FOUND", `No API route for ${c.req.method} ${c.req.path}`);
