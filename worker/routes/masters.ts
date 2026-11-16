@@ -192,6 +192,25 @@ function paged<T>(items: T[], total: number, page: number): ListResponse<T> {
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
+/**
+ * The product group (stored by name in products.category) and the unit must be
+ * active masters. A product may keep its current group/unit even if it was
+ * later deactivated. Returns the group's stored spelling.
+ */
+async function assertGroupAndUnit(db: D1Database, p: { category: string; unit: string }, current?: { category: string; unit: string }) {
+  const [group, unit] = await db.batch([
+    db.prepare("SELECT name, is_active FROM product_groups WHERE name = ?1 COLLATE NOCASE").bind(p.category),
+    db.prepare("SELECT is_active FROM units WHERE code = ?1").bind(p.unit),
+  ]);
+  const g = group?.results?.[0] as { name: string; is_active: number } | undefined;
+  const u = unit?.results?.[0] as { is_active: number } | undefined;
+  const fields: Record<string, string[]> = {};
+  if (p.category && (!g || (!g.is_active && g.name !== current?.category))) fields.category = ["Choose a product group"];
+  if (!u || (!u.is_active && p.unit !== current?.unit)) fields.unit = ["Choose a unit"];
+  if (Object.keys(fields).length) throw new AppError(400, "VALIDATION", "Please check the highlighted fields.", { fields });
+  return g?.name ?? "";
+}
+
 export const masterRoutes = new Hono<AppEnv>();
 // Scoped to this module's paths: a bare "*" would also cover /api/auth/login once mounted at /api.
 for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/products/*", "/parties", "/parties/*", "/scan/*", "/dashboard"]) {
@@ -323,6 +342,7 @@ masterRoutes
     const p = c.req.valid("json");
     const db = c.env.DB;
     await assertSlabUsable(db, p.gstSlabId);
+    p.category = await assertGroupAndUnit(db, p);
     const now = Date.now();
     try {
       const [insert] = await db.batch([
@@ -350,6 +370,7 @@ masterRoutes
     if (!current) throw notFound("Product");
     if (current.updatedAt !== p.updatedAt) throw conflict();
     await assertSlabUsable(db, p.gstSlabId, current.gstSlabId);
+    p.category = await assertGroupAndUnit(db, p, current);
     if (current.tracksSerial && !p.tracksSerial && current.inStock > 0) {
       throw new AppError(400, "VALIDATION", "This product has serial-numbered units in stock.", {
         fields: { tracksSerial: ["Can't turn off serial tracking while serial-numbered units are in stock"] },

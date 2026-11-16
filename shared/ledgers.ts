@@ -146,3 +146,19 @@ export interface ExpenseDetail extends ExpenseSummary {
   lines: { ledgerId: number; ledgerName: string; amountPaise: number; gstRateBp: number; taxPaise: number; narration: string }[];
   journal: { account: string; debitPaise: number; creditPaise: number }[];
 }
+
+// ── Ledger groups (Module 7) ────────────────────────────────────────────────
+
+export interface LedgerGroupRow extends LedgerGroup {
+  parentId: number | null;
+  parentName: string | null;
+  isSystem: boolean;
+  ledgerCount: number;
+  updatedAt: number;
+}
+
+export const ledgerGroupSchema = z.object({
+  name: z.string().trim().min(2, "Enter a name (2+ characters)").max(60),
+  parentId: z.number().int().positive("Choose the main group"),
+});
+export const updateLedgerGroupSchema = z.object({ name: ledgerGroupSchema.shape.name, updatedAt });
