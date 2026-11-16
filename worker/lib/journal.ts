@@ -14,7 +14,10 @@ export type SystemLedger =
   | "output_sgst"
   | "output_igst"
   | "round_off"
-  | "cash";
+  | "cash"
+  | "bank"
+  | "discount_allowed"
+  | "discount_received";
 
 export interface JournalLine {
   ledger?: SystemLedger;
@@ -23,7 +26,7 @@ export interface JournalLine {
   credit: number;
 }
 
-export type SourceType = "purchase" | "purchase_return" | "sale" | "sales_return";
+export type SourceType = "purchase" | "purchase_return" | "sale" | "sales_return" | "receipt" | "payment";
 
 /** Adds a debit (positive) or credit (negative) line; zero amounts are skipped. */
 export class JournalBuilder {
@@ -63,6 +66,8 @@ const SOURCE_TABLE: Record<SourceType, string> = {
   purchase_return: "purchase_returns",
   sale: "sales",
   sales_return: "sales_returns",
+  receipt: "money_vouchers",
+  payment: "money_vouchers",
 };
 
 /**

@@ -1,3 +1,5 @@
+import { OutstandingPage, StatementPage } from "./pages/accounts/StatementPages";
+import { VoucherDetailPage, VoucherFormPage, VouchersPage } from "./pages/accounts/VoucherPages";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter } from "react-router";
@@ -58,6 +60,14 @@ const router = createBrowserRouter([
               { path: "/sales/:id", element: <SaleDetailPage /> },
               { path: "/sales-returns", element: <SalesReturnsPage /> },
               { path: "/sales-returns/new", element: <SalesReturnFormPage /> },
+              { path: "/receipts", element: <VouchersPage key="receipt" kind="receipt" /> },
+              { path: "/receipts/new", element: <VoucherFormPage key="receipt" kind="receipt" /> },
+              { path: "/receipts/:id", element: <VoucherDetailPage key="receipt" kind="receipt" /> },
+              { path: "/payments", element: <VouchersPage key="payment" kind="payment" /> },
+              { path: "/payments/new", element: <VoucherFormPage key="payment" kind="payment" /> },
+              { path: "/payments/:id", element: <VoucherDetailPage key="payment" kind="payment" /> },
+              { path: "/statement", element: <StatementPage /> },
+              { path: "/outstanding", element: <OutstandingPage /> },
               { path: "/account", element: <AccountPage /> },
             ],
           },

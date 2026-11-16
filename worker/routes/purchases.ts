@@ -22,6 +22,7 @@ import {
 } from "../../shared/purchase";
 import { isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
+import { clearGuards, guard, isGuardFailure } from "../lib/guard";
 import { JournalBuilder, journalStatements, readJournal } from "../lib/journal";
 import { audit, auditIfChanged, idParam, type Ctx } from "../lib/route";
 import { requireAuth, validate } from "../middleware";
@@ -408,8 +409,15 @@ purchaseRoutes
         throw new AppError(409, "UNITS_MOVED", `Can't cancel: some ${item.productName} from this bill has already been sold.`);
       }
     }
+    const settled = "EXISTS (SELECT 1 FROM voucher_allocations a JOIN money_vouchers v ON v.id = a.voucher_id WHERE v.status = 'posted' AND a.target_type = 'purchase' AND a.target_id = ?1)";
+    const hasPayments = () => new AppError(409, "HAS_PAYMENTS", "Payments are allocated to this bill. Cancel those payments first.");
+    if ((await db.prepare(`SELECT ${settled} AS x`).bind(id).first<{ x: number }>())?.x) throw hasPayments();
     const now = Date.now();
-    const [update] = await db.batch([
+    let update: D1Result | undefined;
+    try {
+      [, , update] = await db.batch([
+      guard(db, `NOT ${settled}`, id),
+      clearGuards(db),
       db
         .prepare("UPDATE purchases SET status = 'cancelled', cancel_reason = ?1, updated_at = ?2 WHERE id = ?3 AND status = 'posted'")
         .bind(reason, now, id),
@@ -422,7 +430,11 @@ purchaseRoutes
         .bind(now, id),
       db.prepare("UPDATE stock_movements SET is_void = 1 WHERE source_type = 'purchase' AND source_id = ?1").bind(id),
       db.prepare("UPDATE journal_entries SET status = 'cancelled' WHERE source_type = 'purchase' AND source_id = ?1").bind(id),
-    ]);
+      ]);
+    } catch (err) {
+      if (isGuardFailure(err)) throw hasPayments();
+      throw err;
+    }
     if (!update?.meta.changes) throw new AppError(409, "ALREADY_CANCELLED", "This purchase is already cancelled.");
     return c.json(await readPurchase(db, id));
   })

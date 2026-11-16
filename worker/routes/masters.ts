@@ -24,6 +24,8 @@ import { todayIst } from "../../shared/gst";
 import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
 import { audit, auditIfChanged, idParam, nextStamp } from "../lib/route";
+import { clearGuards, guard, isGuardFailure } from "../lib/guard";
+import { openingOutstandingSql } from "../lib/outstanding";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
 
@@ -439,6 +441,12 @@ masterRoutes
     if (current.isCounter && (p.partyType !== "customer" || !p.isActive || p.gstin || p.openingBalancePaise !== 0)) {
       throw new AppError(400, "VALIDATION", "The Counter Sales customer must stay an active customer without GSTIN or opening balance.");
     }
+    // Receipts/payments already allocated to the opening balance must still fit in it.
+    const openingFits = `${openingOutstandingSql("receipt")} >= 0 AND ${openingOutstandingSql("payment")} >= 0`;
+    const openingTooSmall = () =>
+      new AppError(400, "VALIDATION", "Receipts or payments are already allocated to the opening balance; it can't be reduced below that.", {
+        fields: { openingBalancePaise: ["Already partly settled by receipts/payments"] },
+      });
     const stamp = nextStamp(current.updatedAt);
     try {
       const [update] = await db.batch([
@@ -451,9 +459,12 @@ masterRoutes
           .bind(p.name, p.partyType, p.phone, p.email, p.gstin, p.address, p.city, p.stateCode, p.pincode,
             p.openingBalancePaise, p.isActive ? 1 : 0, stamp, id, p.updatedAt),
         auditIfChanged(c, "party.updated", { id, changes: diff(current as never, p as never) }),
+        guard(db, `(SELECT ${openingFits} FROM parties p WHERE p.id = ?1)`, id),
+        clearGuards(db),
       ]);
       if (!update?.meta.changes) throw conflict();
     } catch (err) {
+      if (isGuardFailure(err)) throw openingTooSmall();
       partyUniqueError(err);
     }
     return c.json(await getParty(db, id));
@@ -462,12 +473,16 @@ masterRoutes
   // Dashboard summary (grows with each module)
   .get("/dashboard", async (c) => {
     const row = await c.env.DB.prepare(
-      `SELECT
+      `WITH party_balances AS (
+         SELECT p.opening_balance_paise + COALESCE((SELECT SUM(jl.debit_paise - jl.credit_paise) FROM journal_lines jl
+                  JOIN journal_entries e ON e.id = jl.entry_id WHERE jl.party_id = p.id AND e.status = 'posted'), 0) AS b
+           FROM parties p)
+       SELECT
          (SELECT COUNT(*) FROM products WHERE is_active = 1) AS active_products,
          (SELECT COUNT(*) FROM product_units WHERE status = 'in_stock') AS units_in_stock,
          (SELECT COUNT(*) FROM parties WHERE is_active = 1) AS active_parties,
-         (SELECT COALESCE(SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise > 0) AS receivable_paise,
-         (SELECT COALESCE(-SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise < 0) AS payable_paise,
+         (SELECT COALESCE(SUM(MAX(b, 0)), 0) FROM party_balances) AS receivable_paise,
+         (SELECT COALESCE(SUM(MAX(-b, 0)), 0) FROM party_balances) AS payable_paise,
          (SELECT COALESCE(SUM(total_paise), 0) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today,
          (SELECT COUNT(*) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today_count`,
     ).bind(todayIst()).first<{ active_products: number; units_in_stock: number; active_parties: number; receivable_paise: number; payable_paise: number; sales_today: number; sales_today_count: number }>();
