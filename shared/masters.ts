@@ -33,6 +33,9 @@ const updatedAt = z.number().int().nonnegative();
 
 // ── Shop settings ────────────────────────────────────────────────────────────
 
+/** ~80 KB image as base64. */
+export const MAX_LOGO_DATA_URL_LENGTH = 110_000;
+
 export const shopSettingsSchema = z
   .object({
     shopName: requiredText(120, "Shop name"),
@@ -48,6 +51,16 @@ export const shopSettingsSchema = z
     bankIfsc: text(11)
       .toUpperCase()
       .refine((v) => v === "" || /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v), "IFSC must look like SBIN0001234"),
+    invoicePrefix: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9]{1,6}$/, "Prefix must be 1–6 letters or digits, e.g. SV"),
+    logoDataUrl: z
+      .string()
+      .max(MAX_LOGO_DATA_URL_LENGTH, "Logo is too large — use an image under 80 KB")
+      .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/, "Logo must be a PNG, JPEG or WebP image")
+      .nullable(),
     updatedAt,
   })
   .superRefine((v, ctx) => {
@@ -69,6 +82,8 @@ export interface ShopSettings {
   bankName: string;
   bankAccount: string;
   bankIfsc: string;
+  invoicePrefix: string;
+  logoDataUrl: string | null;
   updatedAt: number;
 }
 
@@ -178,6 +193,8 @@ export type PartyInput = z.input<typeof partySchema>;
 
 export interface Party {
   id: number;
+  /** The built-in walk-in "Counter Sales" customer. */
+  isCounter: boolean;
   name: string;
   partyType: PartyType;
   phone: string;
@@ -214,3 +231,14 @@ export type ScanResult =
   | { kind: "unit"; serial: string; status: string; product: Product }
   | { kind: "product"; product: Product }
   | { kind: "none"; code: string };
+
+export interface DashboardSummary {
+  activeProducts: number;
+  unitsInStock: number;
+  activeParties: number;
+  salesTodayPaise: number;
+  salesTodayCount: number;
+  /** Totals of party balances; from opening balances until bills exist. */
+  receivablePaise: number;
+  payablePaise: number;
+}

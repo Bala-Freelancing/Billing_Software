@@ -18,8 +18,8 @@ Project rules for contributors (and for Claude) are in [`CLAUDE.md`](CLAUDE.md).
 
 - [x] **Module 1 — Sign-in**: owner login, sessions, change password, sign out of all devices
 - [x] **Module 2 — Masters**: shop settings, GST slabs, products (serial-tracked), parties, barcode scan box (USB + camera)
-- [ ] Module 3 — Purchase entry and stock
-- [ ] Module 4 — Sales billing and printable invoice
+- [x] **Module 3 — Purchase**: double-entry accounting core, purchase entry with serial scanning, purchase returns, opening stock
+- [x] **Module 4 — Sales**: scan-to-bill invoices (credit, cash, walk-in counter), gapless FY numbering, A4 GST invoice print with logo, sales returns (credit notes)
 - [ ] Module 5 — Credit: receipts, payments, outstanding, days pending
 - [ ] Module 6 — Reports: purchase/sales registers, GST-slab PDF
 - [ ] Module 7 — Dashboard

@@ -41,6 +41,16 @@ real money. Treat every change accordingly.
   new schema: add tables/columns (with defaults); rename or drop only in a later
   release once nothing uses the old shape. Never edit a migration that has merged.
 - Tables use `STRICT`; add indexes for every column used in report filters.
+- **Documents carry a client-generated `uid`** (idempotency key): saving the same form
+  twice returns the first result. Later statements in the batch find the new row by uid.
+- **Bulk rows use `json_each()`** (items, serial units, stock movements, journal lines)
+  so one save stays within the free plan's 50 queries per request.
+- **Every money document posts a balanced journal** via `JournalBuilder`; cancelling marks
+  the entry cancelled. Totals are always recomputed on the server (`shared/gst.ts`).
+- **Document numbers come from `document_counters`**, incremented in the same batch as the
+  document (gapless, never reused; cancelled documents keep their number).
+- **Assert mid-batch with `batch_guards`** (e.g. every scanned unit really moved, no stock
+  below zero); a failed guard rolls back the whole transaction.
 
 ## Security
 

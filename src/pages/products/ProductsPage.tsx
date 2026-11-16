@@ -72,7 +72,7 @@ export function ProductsPage() {
       {scanMessage && <Alert tone="error">{scanMessage}</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>

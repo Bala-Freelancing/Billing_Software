@@ -16,49 +16,16 @@ import {
   type PartyType,
   type Product,
   type ScanResult,
+  type DashboardSummary,
   type ShopSettings,
   type Unit,
 } from "../../shared/masters";
-import { auditStatement, type AuditAction } from "../lib/audit";
+import { todayIst } from "../../shared/gst";
 import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
-import { clientIp, userAgent } from "../lib/request";
+import { audit, auditIfChanged, idParam, nextStamp } from "../lib/route";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
-import type { Context } from "hono";
-
-type Ctx = Context<AppEnv>;
-
-const idParam = (c: Ctx) => {
-  const id = Number(c.req.param("id"));
-  if (!Number.isSafeInteger(id) || id <= 0) throw notFound("Record");
-  return id;
-};
-
-/** Next updated_at: never equal to the previous value, so optimistic locking always detects a change. */
-const nextStamp = (previous: number) => Math.max(Date.now(), previous + 1);
-
-function audit(c: Ctx, action: AuditAction, details: Record<string, unknown>) {
-  return auditStatement(c.env.DB, {
-    action,
-    userId: c.get("user").id,
-    ip: clientIp(c),
-    userAgent: userAgent(c),
-    at: Date.now(),
-    details,
-  });
-}
-
-/**
- * Audit row that is written only if the immediately preceding statement in the
- * same batch changed a row, so a lost optimistic-lock race leaves no audit entry.
- */
-function auditIfChanged(c: Ctx, action: AuditAction, details: Record<string, unknown>) {
-  return c.env.DB.prepare(
-    `INSERT INTO audit_log (created_at, user_id, action, ip, user_agent, details)
-     SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE changes() > 0`,
-  ).bind(Date.now(), c.get("user").id, action, clientIp(c), userAgent(c), JSON.stringify(details));
-}
 
 // ── Row mapping ──────────────────────────────────────────────────────────────
 
@@ -74,6 +41,8 @@ interface SettingsRow {
   bank_name: string;
   bank_account: string;
   bank_ifsc: string;
+  invoice_prefix: string;
+  logo_data_url: string | null;
   updated_at: number;
 }
 
@@ -89,6 +58,8 @@ const toSettings = (r: SettingsRow): ShopSettings => ({
   bankName: r.bank_name,
   bankAccount: r.bank_account,
   bankIfsc: r.bank_ifsc,
+  invoicePrefix: r.invoice_prefix,
+  logoDataUrl: r.logo_data_url,
   updatedAt: r.updated_at,
 });
 
@@ -113,7 +84,10 @@ interface ProductRow {
 const PRODUCT_SELECT = `
   SELECT p.id, p.brand, p.name, p.category, p.hsn_code, p.gst_slab_id, g.rate_bp, p.unit,
          p.mrp_paise, p.selling_price_paise, p.barcode, p.tracks_serial, p.is_active, p.updated_at,
-         (SELECT COUNT(*) FROM product_units u WHERE u.product_id = p.id AND u.status = 'in_stock') AS in_stock
+         CASE WHEN p.tracks_serial = 1
+           THEN (SELECT COUNT(*) FROM product_units u WHERE u.product_id = p.id AND u.status = 'in_stock')
+           ELSE (SELECT COALESCE(SUM(m.qty_delta), 0) FROM stock_movements m WHERE m.product_id = p.id AND m.is_void = 0)
+         END AS in_stock
     FROM products p
     JOIN gst_slabs g ON g.id = p.gst_slab_id`;
 
@@ -148,11 +122,13 @@ interface PartyRow {
   pincode: string;
   opening_balance_paise: number;
   is_active: number;
+  is_counter: number;
   updated_at: number;
 }
 
 const toParty = (r: PartyRow): Party => ({
   id: r.id,
+  isCounter: r.is_counter === 1,
   name: r.name,
   partyType: r.party_type,
   phone: r.phone,
@@ -216,7 +192,7 @@ function paged<T>(items: T[], total: number, page: number): ListResponse<T> {
 
 export const masterRoutes = new Hono<AppEnv>();
 // Scoped to this module's paths: a bare "*" would also cover /api/auth/login once mounted at /api.
-for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/products/*", "/parties", "/parties/*", "/scan/*"]) {
+for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/products/*", "/parties", "/parties/*", "/scan/*", "/dashboard"]) {
   masterRoutes.use(path, requireAuth);
 }
 masterRoutes
@@ -239,14 +215,19 @@ masterRoutes
       db
         .prepare(
           `UPDATE shop_settings SET shop_name = ?1, gstin = ?2, address = ?3, city = ?4, state_code = ?5, pincode = ?6,
-             phone = ?7, email = ?8, bank_name = ?9, bank_account = ?10, bank_ifsc = ?11, updated_at = ?12
+             phone = ?7, email = ?8, bank_name = ?9, bank_account = ?10, bank_ifsc = ?11, updated_at = ?12,
+             invoice_prefix = ?14, logo_data_url = ?15
            WHERE id = 1 AND updated_at = ?13`,
         )
         .bind(
           input.shopName, input.gstin, input.address, input.city, input.stateCode, input.pincode,
           input.phone, input.email, input.bankName, input.bankAccount, input.bankIfsc, stamp, input.updatedAt,
+          input.invoicePrefix, input.logoDataUrl,
         ),
-      auditIfChanged(c, "settings.updated", { changes: diff(toSettings(current) as never, { ...input } as never) }),
+      auditIfChanged(c, "settings.updated", {
+        // The logo itself is not copied into the audit log, only whether it changed.
+        changes: diff({ ...toSettings(current), logoDataUrl: current.logo_data_url ? "set" : null } as never, { ...input, logoDataUrl: input.logoDataUrl ? (input.logoDataUrl === current.logo_data_url ? "set" : "new") : null } as never),
+      }),
     ]);
     if (!update?.meta.changes) throw conflict();
     const row = await db.prepare("SELECT * FROM shop_settings WHERE id = 1").first<SettingsRow>();
@@ -322,6 +303,14 @@ masterRoutes
     const items = (rows?.results as unknown as ProductRow[]).map(toProduct);
     const total = (count?.results[0] as { n: number } | undefined)?.n ?? 0;
     return c.json(paged(items, total, page));
+  })
+  .get("/products/:id/units", async (c) => {
+    const { results } = await c.env.DB.prepare(
+      "SELECT serial FROM product_units WHERE product_id = ?1 AND status = 'in_stock' ORDER BY id LIMIT 500",
+    )
+      .bind(idParam(c))
+      .all<{ serial: string }>();
+    return c.json({ items: results.map((r) => r.serial) });
   })
   .get("/products/:id", async (c) => {
     const product = await getProduct(c.env.DB, idParam(c));
@@ -447,6 +436,9 @@ masterRoutes
     const current = await getParty(db, id);
     if (!current) throw notFound("Party");
     if (current.updatedAt !== p.updatedAt) throw conflict();
+    if (current.isCounter && (p.partyType !== "customer" || !p.isActive || p.gstin || p.openingBalancePaise !== 0)) {
+      throw new AppError(400, "VALIDATION", "The Counter Sales customer must stay an active customer without GSTIN or opening balance.");
+    }
     const stamp = nextStamp(current.updatedAt);
     try {
       const [update] = await db.batch([
@@ -467,6 +459,30 @@ masterRoutes
     return c.json(await getParty(db, id));
   })
 
+  // Dashboard summary (grows with each module)
+  .get("/dashboard", async (c) => {
+    const row = await c.env.DB.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM products WHERE is_active = 1) AS active_products,
+         (SELECT COUNT(*) FROM product_units WHERE status = 'in_stock') AS units_in_stock,
+         (SELECT COUNT(*) FROM parties WHERE is_active = 1) AS active_parties,
+         (SELECT COALESCE(SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise > 0) AS receivable_paise,
+         (SELECT COALESCE(-SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise < 0) AS payable_paise,
+         (SELECT COALESCE(SUM(total_paise), 0) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today,
+         (SELECT COUNT(*) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today_count`,
+    ).bind(todayIst()).first<{ active_products: number; units_in_stock: number; active_parties: number; receivable_paise: number; payable_paise: number; sales_today: number; sales_today_count: number }>();
+    const summary: DashboardSummary = {
+      activeProducts: row?.active_products ?? 0,
+      unitsInStock: row?.units_in_stock ?? 0,
+      activeParties: row?.active_parties ?? 0,
+      salesTodayPaise: row?.sales_today ?? 0,
+      salesTodayCount: row?.sales_today_count ?? 0,
+      receivablePaise: row?.receivable_paise ?? 0,
+      payablePaise: row?.payable_paise ?? 0,
+    };
+    return c.json(summary);
+  })
+
   // Barcode / serial lookup used by every scan box
   .get("/scan/:code", async (c) => {
     const code = normaliseCode(decodeURIComponent(c.req.param("code")));
@@ -474,7 +490,7 @@ masterRoutes
     if (!code || code.length > 64) return c.json({ kind: "none", code } satisfies ScanResult);
 
     const unit = await db
-      .prepare("SELECT serial, status, product_id FROM product_units WHERE serial = ?1")
+      .prepare("SELECT serial, status, product_id FROM product_units WHERE serial = ?1 ORDER BY status = 'void', id DESC LIMIT 1")
       .bind(code)
       .first<{ serial: string; status: string; product_id: number }>();
     if (unit) {
