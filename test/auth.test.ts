@@ -387,7 +387,7 @@ describe("API basics", () => {
 
   it("rejects oversized request bodies", async () => {
     const res = await call(env, "/api/auth/login", {
-      body: { username: "owner", password: "x".repeat(100 * 1024) },
+      body: { username: "owner", password: "x".repeat(200 * 1024) },
       ip: uniqueIp(),
     });
     expect(res.status).toBe(413);

@@ -43,6 +43,10 @@ real money. Treat every change accordingly.
   so one save stays within the free plan's 50 queries per request.
 - **Every money document posts a balanced journal** via `JournalBuilder`; cancelling marks
   the entry cancelled. Totals are always recomputed on the server (`shared/gst.ts`).
+- **Document numbers come from `document_counters`**, incremented in the same batch as the
+  document (gapless, never reused; cancelled documents keep their number).
+- **Assert mid-batch with `batch_guards`** (e.g. every scanned unit really moved, no stock
+  below zero); a failed guard rolls back the whole transaction.
 
 ## Security
 

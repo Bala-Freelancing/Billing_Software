@@ -23,7 +23,7 @@ export interface JournalLine {
   credit: number;
 }
 
-export type SourceType = "purchase" | "purchase_return";
+export type SourceType = "purchase" | "purchase_return" | "sale" | "sales_return";
 
 /** Adds a debit (positive) or credit (negative) line; zero amounts are skipped. */
 export class JournalBuilder {
@@ -58,7 +58,12 @@ export class JournalBuilder {
   }
 }
 
-const SOURCE_TABLE: Record<SourceType, string> = { purchase: "purchases", purchase_return: "purchase_returns" };
+const SOURCE_TABLE: Record<SourceType, string> = {
+  purchase: "purchases",
+  purchase_return: "purchase_returns",
+  sale: "sales",
+  sales_return: "sales_returns",
+};
 
 /**
  * Statements that insert the journal entry and its lines for a document that is

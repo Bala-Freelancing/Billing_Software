@@ -82,6 +82,39 @@ function ShopSettingsForm({ initial }: { initial: ShopSettings }) {
         <TextField label="Phone" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} errors={errors.phone} />
         <TextField label="Email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} errors={errors.email} />
       </div>
+      <h3 className="pt-2 text-sm font-semibold text-slate-900">Invoice</h3>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <TextField
+          label="Invoice number prefix"
+          className="font-mono"
+          maxLength={6}
+          value={form.invoicePrefix}
+          onChange={(e) => set("invoicePrefix", e.target.value.toUpperCase())}
+          errors={errors.invoicePrefix}
+          hint={`Next invoices look like 2627/${form.invoicePrefix || "SV"}/0001`}
+        />
+        <div className="sm:col-span-2">
+          <p className="block text-sm font-medium text-slate-700">Logo (printed on invoices)</p>
+          <div className="mt-1 flex items-center gap-3">
+            {form.logoDataUrl ? <img src={form.logoDataUrl} alt="Shop logo" className="h-14 w-14 rounded border border-slate-200 object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-400">None</div>}
+            <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+              Choose image
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) return setErrors((x) => ({ ...x, logoDataUrl: ["Use a PNG, JPEG or WebP image"] }));
+                if (file.size > 80 * 1024) return setErrors((x) => ({ ...x, logoDataUrl: ["Image must be under 80 KB — resize it first"] }));
+                const reader = new FileReader();
+                reader.onload = () => set("logoDataUrl", String(reader.result));
+                reader.readAsDataURL(file);
+              }} />
+            </label>
+            {form.logoDataUrl && <button type="button" className="text-sm text-red-700 hover:underline" onClick={() => set("logoDataUrl", null)}>Remove</button>}
+          </div>
+          {errors.logoDataUrl && <p className="mt-1.5 text-sm text-red-700">{errors.logoDataUrl[0]}</p>}
+        </div>
+      </div>
       <h3 className="pt-2 text-sm font-semibold text-slate-900">Bank details (printed on invoices)</h3>
       <div className="grid gap-5 sm:grid-cols-3">
         <TextField label="Bank name" value={form.bankName} onChange={(e) => set("bankName", e.target.value)} errors={errors.bankName} />

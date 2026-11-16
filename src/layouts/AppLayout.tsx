@@ -13,9 +13,9 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: "Transaction",
     items: [
-      { label: "Sales" },
+      { label: "Sales", to: "/sales" },
       { label: "Purchase", to: "/purchases" },
-      { label: "Sales Return" },
+      { label: "Sales Return", to: "/sales-returns" },
       { label: "Purchase Return", to: "/purchase-returns" },
       { label: "Receipt" },
       { label: "Payment" },

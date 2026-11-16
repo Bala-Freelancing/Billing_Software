@@ -20,7 +20,11 @@ export type AuditAction =
   | "opening_stock.created"
   | "opening_stock.cancelled"
   | "purchase_return.created"
-  | "purchase_return.cancelled";
+  | "purchase_return.cancelled"
+  | "sale.created"
+  | "sale.cancelled"
+  | "sales_return.created"
+  | "sales_return.cancelled";
 
 export interface AuditEntry {
   action: AuditAction;
