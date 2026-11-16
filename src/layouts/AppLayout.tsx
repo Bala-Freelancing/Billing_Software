@@ -27,12 +27,12 @@ const NAV: { title: string; items: NavItem[] }[] = [
   {
     title: "Reports",
     items: [
-      { label: "Sales Report" },
-      { label: "Purchase Report" },
-      { label: "Receipt / Payment" },
+      { label: "Sales Report", to: "/reports/sales" },
+      { label: "Purchase Report", to: "/reports/purchases" },
+      { label: "Receipt / Payment", to: "/receipts" },
       { label: "Ledger Report" },
       { label: "Product Report" },
-      { label: "GST Slab PDF" },
+      { label: "GST Slab PDF", to: "/reports/gst" },
     ],
   },
   {
