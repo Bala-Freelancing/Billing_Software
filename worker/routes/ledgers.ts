@@ -14,6 +14,7 @@
 import { Hono } from "hono";
 import {
   approveSchema,
+  computeExpense,
   expenseListQuery,
   expenseSchema,
   ledgerListQuery,
@@ -82,18 +83,36 @@ async function readExpense(db: D1Database, id: number): Promise<ExpenseDetail | 
     db.prepare("SELECT * FROM general_vouchers WHERE id = ?1").bind(id),
     db
       .prepare(
-        `SELECT gl.ledger_id, l.name AS ledger_name, gl.amount_paise, gl.narration FROM general_voucher_lines gl
+        `SELECT gl.ledger_id, l.name AS ledger_name, gl.amount_paise, gl.gst_rate_bp, gl.cgst_paise + gl.sgst_paise + gl.igst_paise AS tax_paise, gl.narration
+           FROM general_voucher_lines gl
            JOIN ledgers l ON l.id = gl.ledger_id WHERE gl.voucher_id = ?1 ORDER BY gl.line_no`,
       )
       .bind(id),
   ]);
   const v = (head?.results as Row[] | undefined)?.[0];
   if (!v) return null;
-  const ls = ((lines?.results ?? []) as Row[]).map((l) => ({ ledgerId: l.ledger_id, ledgerName: l.ledger_name, amountPaise: l.amount_paise, narration: l.narration }));
+  const ls = ((lines?.results ?? []) as Row[]).map((l) => ({
+    ledgerId: l.ledger_id,
+    ledgerName: l.ledger_name,
+    amountPaise: l.amount_paise,
+    gstRateBp: l.gst_rate_bp,
+    taxPaise: l.tax_paise,
+    narration: l.narration,
+  }));
   return {
     ...toExpenseSummary({ ...v, heads: ls.map((l) => l.ledgerName).join(", ") }),
     remarks: v.remarks,
     statusReason: v.status_reason,
+    gstBill: v.gst_bill === 1,
+    supplierName: v.supplier_name,
+    supplierGstin: v.supplier_gstin,
+    supplierInvoiceNo: v.supplier_invoice_no,
+    supplierInvoiceDate: v.supplier_invoice_date,
+    interstate: v.interstate === 1,
+    taxablePaise: v.taxable_paise,
+    cgstPaise: v.cgst_paise,
+    sgstPaise: v.sgst_paise,
+    igstPaise: v.igst_paise,
     approvedAt: v.approved_at,
     lines: ls,
     journal: v.status === "approved" || v.status === "cancelled" ? await readJournal(db, "journal", id) : [],
@@ -137,10 +156,35 @@ const LINES_VALID = `NOT EXISTS (SELECT 1 FROM general_voucher_lines gl JOIN led
 const insertLines = (db: D1Database, voucherIdSql: string, uidOrId: unknown, lines: unknown[]) =>
   db
     .prepare(
-      `INSERT INTO general_voucher_lines (voucher_id, line_no, ledger_id, amount_paise, narration)
-       SELECT ${voucherIdSql}, j.key + 1, j.value ->> '$.ledgerId', j.value ->> '$.amountPaise', j.value ->> '$.narration' FROM json_each(?2) j`,
+      `INSERT INTO general_voucher_lines (voucher_id, line_no, ledger_id, amount_paise, gst_rate_bp, cgst_paise, sgst_paise, igst_paise, narration)
+       SELECT ${voucherIdSql}, j.key + 1, j.value ->> '$.ledgerId', j.value ->> '$.amountPaise', j.value ->> '$.gstRateBp',
+              j.value ->> '$.cgstPaise', j.value ->> '$.sgstPaise', j.value ->> '$.igstPaise', j.value ->> '$.narration' FROM json_each(?2) j`,
     )
     .bind(uidOrId, JSON.stringify(lines));
+
+type ExpenseBody = ReturnType<typeof expenseSchema.parse>;
+
+/** Validates GST rates against the slabs and computes tax per line and totals. */
+async function prepareExpense(db: D1Database, input: ExpenseBody) {
+  let interstate = false;
+  if (input.gstBill) {
+    const [slabs, shop] = await db.batch([
+      db.prepare("SELECT rate_bp FROM gst_slabs"),
+      db.prepare("SELECT state_code FROM shop_settings WHERE id = 1"),
+    ]);
+    const rates = new Set(((slabs?.results ?? []) as Row[]).map((r) => r.rate_bp as number));
+    for (const l of input.lines) if (!rates.has(l.gstRateBp)) throw invalid("Choose a GST rate from the GST slabs", "lines");
+    const shopState = ((shop?.results?.[0] as Row | undefined)?.state_code as string | undefined) ?? "33";
+    interstate = input.supplierGstin.slice(0, 2) !== shopState;
+  }
+  const t = computeExpense(input.lines, interstate);
+  const lines = input.lines.map((l, i) => ({ ...l, cgstPaise: t.lines[i]!.cgstPaise, sgstPaise: t.lines[i]!.sgstPaise, igstPaise: t.lines[i]!.igstPaise }));
+  const head = input.gstBill
+    ? [1, input.supplierName, input.supplierGstin, input.supplierInvoiceNo, input.supplierInvoiceDate, interstate ? 1 : 0]
+    : [0, "", null, "", null, 0];
+  return { lines, totals: t, head: [...head, t.taxablePaise, t.cgstPaise, t.sgstPaise, t.igstPaise] };
+}
+const GST_COLUMNS = "gst_bill, supplier_name, supplier_gstin, supplier_invoice_no, supplier_invoice_date, interstate, taxable_paise, cgst_paise, sgst_paise, igst_paise";
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
@@ -276,18 +320,19 @@ ledgerRoutes
     const existing = await db.prepare("SELECT id FROM general_vouchers WHERE uid = ?1").bind(input.uid).first<{ id: number }>();
     if (existing) return c.json(await readExpense(db, existing.id));
     await checkLines(db, input.lines);
-    const total = input.lines.reduce((s, l) => s + l.amountPaise, 0);
+    const prep = await prepareExpense(db, input);
+    const total = prep.totals.totalPaise;
     const now = Date.now();
     try {
       await db.batch([
         db
           .prepare(
-            `INSERT INTO general_vouchers (uid, voucher_type, voucher_date, mode, reference, remarks, total_paise, created_at, updated_at)
-             VALUES (?1, 'expense', ?2, ?3, ?4, ?5, ?6, ?7, ?7)`,
+            `INSERT INTO general_vouchers (uid, voucher_type, voucher_date, mode, reference, remarks, total_paise, created_at, updated_at, ${GST_COLUMNS})
+             VALUES (?1, 'expense', ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)`,
           )
-          .bind(input.uid, input.voucherDate, input.mode, input.reference, input.remarks, total, now),
-        insertLines(db, "(SELECT id FROM general_vouchers WHERE uid = ?1)", input.uid, input.lines),
-        audit(c, "expense.created", { uid: input.uid, totalPaise: total, lines: input.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise })) }),
+          .bind(input.uid, input.voucherDate, input.mode, input.reference, input.remarks, total, now, ...prep.head),
+        insertLines(db, "(SELECT id FROM general_vouchers WHERE uid = ?1)", input.uid, prep.lines),
+        audit(c, "expense.created", { uid: input.uid, totalPaise: total, gstBill: input.gstBill, lines: input.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise, gstRateBp: l.gstRateBp })) }),
       ]);
     } catch (err) {
       if (!isUniqueViolation(err, "general_vouchers.uid")) throw err;
@@ -306,25 +351,28 @@ ledgerRoutes
     if (current.status !== "draft") throw new AppError(409, "NOT_DRAFT", "Only drafts can be edited.");
     if (current.updatedAt !== input.updatedAt) throw conflict();
     await checkLines(db, input.lines);
-    const total = input.lines.reduce((s, l) => s + l.amountPaise, 0);
+    const prep = await prepareExpense(db, input);
+    const total = prep.totals.totalPaise;
     const stamp = nextStamp(current.updatedAt);
     try {
       await db.batch([
         db
           .prepare(
-            `UPDATE general_vouchers SET voucher_date = ?1, mode = ?2, reference = ?3, remarks = ?4, total_paise = ?5, updated_at = ?6
+            `UPDATE general_vouchers SET voucher_date = ?1, mode = ?2, reference = ?3, remarks = ?4, total_paise = ?5, updated_at = ?6,
+                    gst_bill = ?9, supplier_name = ?10, supplier_gstin = ?11, supplier_invoice_no = ?12, supplier_invoice_date = ?13,
+                    interstate = ?14, taxable_paise = ?15, cgst_paise = ?16, sgst_paise = ?17, igst_paise = ?18
               WHERE id = ?7 AND status = 'draft' AND updated_at = ?8`,
           )
-          .bind(input.voucherDate, input.mode, input.reference, input.remarks, total, stamp, id, input.updatedAt),
+          .bind(input.voucherDate, input.mode, input.reference, input.remarks, total, stamp, id, input.updatedAt, ...prep.head),
         guard(db, "changes() = 1"),
         clearGuards(db),
         // Draft lines are replaced; the audit row keeps what they were.
         db.prepare("DELETE FROM general_voucher_lines WHERE voucher_id = ?1").bind(id),
-        insertLines(db, "?1", id, input.lines),
+        insertLines(db, "?1", id, prep.lines),
         audit(c, "expense.updated", {
           id,
-          before: { totalPaise: current.totalPaise, lines: current.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise })) },
-          after: { totalPaise: total, lines: input.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise })) },
+          before: { totalPaise: current.totalPaise, gstBill: current.gstBill, lines: current.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise, gstRateBp: l.gstRateBp })) },
+          after: { totalPaise: total, gstBill: input.gstBill, lines: input.lines.map((l) => ({ ledgerId: l.ledgerId, amountPaise: l.amountPaise, gstRateBp: l.gstRateBp })) },
         }),
       ]);
     } catch (err) {
@@ -346,6 +394,7 @@ ledgerRoutes
     await checkLines(db, v.lines);
     const journal = new JournalBuilder();
     for (const l of v.lines) journal.debit({ ledgerId: l.ledgerId }, l.amountPaise);
+    journal.debit({ ledger: "input_cgst" }, v.cgstPaise).debit({ ledger: "input_sgst" }, v.sgstPaise).debit({ ledger: "input_igst" }, v.igstPaise);
     journal.credit({ ledger: v.mode === "cash" ? "cash" : "bank" }, v.totalPaise);
     const fy = financialYear(v.voucherDate);
     const series = `EXP-${fy}`;
