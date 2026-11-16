@@ -36,6 +36,10 @@ real money. Treat every change accordingly.
 - **Every security- or money-relevant change writes an `audit_log` row** in the
   same batch. `audit_log` is append-only (enforced by triggers).
 - Store the GST rate on each bill line at billing time, never only on the product.
+- **Migrations must be backward-compatible.** The Deploy workflow applies them
+  *before* the new code goes live, so the previous release must keep working on the
+  new schema: add tables/columns (with defaults); rename or drop only in a later
+  release once nothing uses the old shape. Never edit a migration that has merged.
 - Tables use `STRICT`; add indexes for every column used in report filters.
 - **Documents carry a client-generated `uid`** (idempotency key): saving the same form
   twice returns the first result. Later statements in the batch find the new row by uid.

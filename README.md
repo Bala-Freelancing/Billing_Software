@@ -56,7 +56,51 @@ Use Chrome or Edge locally. Safari refuses the secure session cookie on
 | `npm test`                                | Automated tests only                             |
 | `npm run owner:reset-password -- --local --username owner` | Set a new owner password locally |
 
-## First deployment
+## Automatic deployment (GitHub Actions)
+
+Every merge to `main` runs the **Deploy** workflow: checks → database migrations →
+deploy → health check. The live link appears on the run page and under
+**Environments → production** on the repo home page. Until the secrets below exist,
+the workflow finishes green with a "Deploy skipped" notice.
+
+**One-time setup (about 10 minutes, all in the browser):**
+
+1. **Create a free Cloudflare account** at dash.cloudflare.com. Open
+   **Workers & Pages** once and choose a `workers.dev` subdomain when asked. Your
+   site will live at `sri-vishnu-billing.<subdomain>.workers.dev`.
+2. **Copy your Account ID**: Workers & Pages overview → right-hand side → *Account ID*.
+3. **Create an API token**: profile icon → **My Profile → API Tokens → Create Token →
+   Create Custom Token**. Name it `github-deploy` and add exactly these permissions:
+
+   | Scope   | Permission       | Access |
+   | ------- | ---------------- | ------ |
+   | Account | Workers Scripts  | Edit   |
+   | Account | D1               | Edit   |
+   | Account | Account Settings | Read   |
+
+   Account Resources: *Include → your account*. Create, then copy the token. It's only shown once.
+4. **Add three repository secrets** in GitHub: repo **Settings → Secrets and variables →
+   Actions → New repository secret**:
+
+   | Name                    | Value                                                     |
+   | ----------------------- | --------------------------------------------------------- |
+   | `CLOUDFLARE_API_TOKEN`  | the token from step 3                                     |
+   | `CLOUDFLARE_ACCOUNT_ID` | the Account ID from step 2                                |
+   | `OWNER_PASSWORD`        | the owner's first password (12+ characters)               |
+
+5. **Deploy**: Actions → **Deploy** → *Run workflow* (or merge any PR). The first
+   run creates the production database in the Asia-Pacific region automatically.
+6. **Create the owner account**: Actions → **Owner account** → *Run workflow* →
+   action `create`, username `owner`.
+7. Open the live link, sign in, then **change the password on the Account page**
+   and delete the `OWNER_PASSWORD` secret. To reset a forgotten owner password
+   later, add the secret again and run **Owner account** with `reset-password`.
+
+After the first deploy, the run summary shows the production database id. Commit
+it into `wrangler.jsonc` (replacing the `00000000-…` placeholder) so terminal
+commands with `--remote` reach the same database.
+
+## Manual deployment (from a terminal)
 
 1. Create a free Cloudflare account, then sign in from the terminal:
    ```bash
