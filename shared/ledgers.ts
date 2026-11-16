@@ -27,6 +27,8 @@ export interface Ledger {
   isActive: boolean;
   /** True once any journal line or voucher uses it; its group is then fixed. */
   inUse: boolean;
+  /** Opening balance at go-live; debit positive, credit negative. */
+  openingBalancePaise: number;
   updatedAt: number;
 }
 

@@ -6,6 +6,7 @@ import { requestContext, sameOriginOnly } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { masterRoutes } from "./routes/masters";
 import { purchaseRoutes } from "./routes/purchases";
+import { financialRoutes } from "./routes/financials";
 import { reportRoutes } from "./routes/reports";
 import { catalogRoutes } from "./routes/catalog";
 import { ledgerRoutes } from "./routes/ledgers";
@@ -47,6 +48,7 @@ app.route("/api", voucherRoutes);
 app.route("/api", ledgerRoutes);
 app.route("/api", catalogRoutes);
 app.route("/api", reportRoutes);
+app.route("/api", financialRoutes);
 
 app.notFound((c) => {
   throw new AppError(404, "NOT_FOUND", `No API route for ${c.req.method} ${c.req.path}`);

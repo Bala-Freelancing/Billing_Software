@@ -35,6 +35,7 @@ export type AuditAction =
   | "product_group.updated"
   | "unit.created"
   | "unit.updated"
+  | "ledger.opening_changed"
   | "ledger.created"
   | "ledger.updated"
   | "expense.created"
