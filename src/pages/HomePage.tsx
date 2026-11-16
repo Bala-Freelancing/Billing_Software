@@ -16,9 +16,10 @@ function Metric({ label, value, note }: { label: string; value: string; note?: s
 }
 
 const QUICK_ACTIONS = [
-  { label: "Add product", to: "/products/new", hint: "Havells item with HSN, GST and price" },
+  { label: "New sale", to: "/sales/new", hint: "Scan serials to bill a retailer or walk-in" },
+  { label: "New purchase", to: "/purchases/new", hint: "Receive Havells stock by scanning serials" },
   { label: "Add party", to: "/parties/new", hint: "Retailer or supplier with GSTIN" },
-  { label: "Shop settings", to: "/settings", hint: "GSTIN, address and bank on invoices" },
+
 ];
 
 export function HomePage() {
@@ -39,10 +40,11 @@ export function HomePage() {
 
       {/* Bordered grid of metric counters */}
       <div className="grid divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
-        <Metric label="Receivables" value={rupees(data?.receivablePaise)} note="Owed to the shop" />
+        <Metric label="Sales today" value={rupees(data?.salesTodayPaise)} note={data ? `${data.salesTodayCount} invoice(s)` : undefined} />
+        <Metric label="Receivables" value={rupees(data?.receivablePaise)} note="Opening balances owed to the shop" />
         <Metric label="Payables" value={rupees(data?.payablePaise)} note="Owed by the shop" />
         <Metric label="Units in stock" value={count(data?.unitsInStock)} note="Serial-numbered units" />
-        <Metric label="Active products" value={count(data?.activeProducts)} note={data ? `${data.activeParties} active parties` : undefined} />
+
       </div>
 
       <div className="grid divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white md:grid-cols-3 md:divide-x md:divide-y-0">

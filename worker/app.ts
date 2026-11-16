@@ -6,6 +6,7 @@ import { requestContext, sameOriginOnly } from "./middleware";
 import { authRoutes } from "./routes/auth";
 import { masterRoutes } from "./routes/masters";
 import { purchaseRoutes } from "./routes/purchases";
+import { salesRoutes } from "./routes/sales";
 import type { AppEnv } from "./types";
 
 export const app = new Hono<AppEnv>();
@@ -21,7 +22,7 @@ app.use(
 app.use(
   "/api/*",
   bodyLimit({
-    maxSize: 64 * 1024,
+    maxSize: 160 * 1024, // shop logo (≤ ~80 KB) travels as base64 in settings
     onError: () => {
       throw new AppError(413, "PAYLOAD_TOO_LARGE", "The request is too large.");
     },
@@ -37,6 +38,7 @@ app.get("/api/health", async (c) => {
 app.route("/api/auth", authRoutes);
 app.route("/api", masterRoutes);
 app.route("/api", purchaseRoutes);
+app.route("/api", salesRoutes);
 
 app.notFound((c) => {
   throw new AppError(404, "NOT_FOUND", `No API route for ${c.req.method} ${c.req.path}`);

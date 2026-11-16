@@ -20,6 +20,7 @@ import {
   type ShopSettings,
   type Unit,
 } from "../../shared/masters";
+import { todayIst } from "../../shared/gst";
 import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
 import { audit, auditIfChanged, idParam, nextStamp } from "../lib/route";
@@ -40,6 +41,8 @@ interface SettingsRow {
   bank_name: string;
   bank_account: string;
   bank_ifsc: string;
+  invoice_prefix: string;
+  logo_data_url: string | null;
   updated_at: number;
 }
 
@@ -55,6 +58,8 @@ const toSettings = (r: SettingsRow): ShopSettings => ({
   bankName: r.bank_name,
   bankAccount: r.bank_account,
   bankIfsc: r.bank_ifsc,
+  invoicePrefix: r.invoice_prefix,
+  logoDataUrl: r.logo_data_url,
   updatedAt: r.updated_at,
 });
 
@@ -117,11 +122,13 @@ interface PartyRow {
   pincode: string;
   opening_balance_paise: number;
   is_active: number;
+  is_counter: number;
   updated_at: number;
 }
 
 const toParty = (r: PartyRow): Party => ({
   id: r.id,
+  isCounter: r.is_counter === 1,
   name: r.name,
   partyType: r.party_type,
   phone: r.phone,
@@ -208,14 +215,19 @@ masterRoutes
       db
         .prepare(
           `UPDATE shop_settings SET shop_name = ?1, gstin = ?2, address = ?3, city = ?4, state_code = ?5, pincode = ?6,
-             phone = ?7, email = ?8, bank_name = ?9, bank_account = ?10, bank_ifsc = ?11, updated_at = ?12
+             phone = ?7, email = ?8, bank_name = ?9, bank_account = ?10, bank_ifsc = ?11, updated_at = ?12,
+             invoice_prefix = ?14, logo_data_url = ?15
            WHERE id = 1 AND updated_at = ?13`,
         )
         .bind(
           input.shopName, input.gstin, input.address, input.city, input.stateCode, input.pincode,
           input.phone, input.email, input.bankName, input.bankAccount, input.bankIfsc, stamp, input.updatedAt,
+          input.invoicePrefix, input.logoDataUrl,
         ),
-      auditIfChanged(c, "settings.updated", { changes: diff(toSettings(current) as never, { ...input } as never) }),
+      auditIfChanged(c, "settings.updated", {
+        // The logo itself is not copied into the audit log, only whether it changed.
+        changes: diff({ ...toSettings(current), logoDataUrl: current.logo_data_url ? "set" : null } as never, { ...input, logoDataUrl: input.logoDataUrl ? (input.logoDataUrl === current.logo_data_url ? "set" : "new") : null } as never),
+      }),
     ]);
     if (!update?.meta.changes) throw conflict();
     const row = await db.prepare("SELECT * FROM shop_settings WHERE id = 1").first<SettingsRow>();
@@ -291,6 +303,14 @@ masterRoutes
     const items = (rows?.results as unknown as ProductRow[]).map(toProduct);
     const total = (count?.results[0] as { n: number } | undefined)?.n ?? 0;
     return c.json(paged(items, total, page));
+  })
+  .get("/products/:id/units", async (c) => {
+    const { results } = await c.env.DB.prepare(
+      "SELECT serial FROM product_units WHERE product_id = ?1 AND status = 'in_stock' ORDER BY id LIMIT 500",
+    )
+      .bind(idParam(c))
+      .all<{ serial: string }>();
+    return c.json({ items: results.map((r) => r.serial) });
   })
   .get("/products/:id", async (c) => {
     const product = await getProduct(c.env.DB, idParam(c));
@@ -416,6 +436,9 @@ masterRoutes
     const current = await getParty(db, id);
     if (!current) throw notFound("Party");
     if (current.updatedAt !== p.updatedAt) throw conflict();
+    if (current.isCounter && (p.partyType !== "customer" || !p.isActive || p.gstin || p.openingBalancePaise !== 0)) {
+      throw new AppError(400, "VALIDATION", "The Counter Sales customer must stay an active customer without GSTIN or opening balance.");
+    }
     const stamp = nextStamp(current.updatedAt);
     try {
       const [update] = await db.batch([
@@ -444,12 +467,16 @@ masterRoutes
          (SELECT COUNT(*) FROM product_units WHERE status = 'in_stock') AS units_in_stock,
          (SELECT COUNT(*) FROM parties WHERE is_active = 1) AS active_parties,
          (SELECT COALESCE(SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise > 0) AS receivable_paise,
-         (SELECT COALESCE(-SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise < 0) AS payable_paise`,
-    ).first<{ active_products: number; units_in_stock: number; active_parties: number; receivable_paise: number; payable_paise: number }>();
+         (SELECT COALESCE(-SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise < 0) AS payable_paise,
+         (SELECT COALESCE(SUM(total_paise), 0) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today,
+         (SELECT COUNT(*) FROM sales WHERE status = 'posted' AND invoice_date = ?1) AS sales_today_count`,
+    ).bind(todayIst()).first<{ active_products: number; units_in_stock: number; active_parties: number; receivable_paise: number; payable_paise: number; sales_today: number; sales_today_count: number }>();
     const summary: DashboardSummary = {
       activeProducts: row?.active_products ?? 0,
       unitsInStock: row?.units_in_stock ?? 0,
       activeParties: row?.active_parties ?? 0,
+      salesTodayPaise: row?.sales_today ?? 0,
+      salesTodayCount: row?.sales_today_count ?? 0,
       receivablePaise: row?.receivable_paise ?? 0,
       payablePaise: row?.payable_paise ?? 0,
     };
