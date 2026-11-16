@@ -25,7 +25,7 @@ export function PurchaseFormPage() {
   const [supplier, setSupplier] = useState<Party | null>(null);
   const [invoiceNo, setInvoiceNo] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(todayIst());
-  const [ratesIncludeGst, setRatesIncludeGst] = useState(false);
+  const [ratesIncludeGst, setRatesIncludeGst] = useState(true);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -166,7 +166,7 @@ export function PurchaseFormPage() {
           <div className="mt-4">
             <CheckboxField
               label="Rates include GST"
-              description="Leave off to enter rates exactly as printed on the supplier's tax invoice (before GST)."
+              description="Turn off to enter rates exactly as printed on the supplier's tax invoice (before GST)."
               checked={ratesIncludeGst}
               onChange={setRatesIncludeGst}
             />
