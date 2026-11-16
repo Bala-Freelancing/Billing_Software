@@ -1,3 +1,4 @@
+import { GstReportPage, RegisterPage } from "./pages/reports/ReportPages";
 import { LedgerGroupsPage, ProductGroupsPage, UnitsPage } from "./pages/masters/CatalogPages";
 import { ExpenseApprovalPage, ExpenseDetailPage, ExpenseFormPage, ExpensesPage } from "./pages/accounts/ExpensePages";
 import { LedgersPage } from "./pages/accounts/LedgersPage";
@@ -71,6 +72,9 @@ const router = createBrowserRouter([
               { path: "/payments/:id", element: <VoucherDetailPage key="payment" kind="payment" /> },
               { path: "/statement", element: <StatementPage /> },
               { path: "/outstanding", element: <OutstandingPage /> },
+              { path: "/reports/sales", element: <RegisterPage key="sales" kind="sales" /> },
+              { path: "/reports/purchases", element: <RegisterPage key="purchase" kind="purchase" /> },
+              { path: "/reports/gst", element: <GstReportPage /> },
               { path: "/ledgers", element: <LedgersPage /> },
               { path: "/ledger-groups", element: <LedgerGroupsPage /> },
               { path: "/product-groups", element: <ProductGroupsPage /> },
