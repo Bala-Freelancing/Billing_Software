@@ -1,3 +1,4 @@
+import type React from "react";
 import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "danger";
@@ -134,4 +135,117 @@ export function Alert({ tone, children }: { tone: "error" | "success" | "info"; 
 
 export function FullPageMessage({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center p-6">{children}</div>;
+}
+
+interface SelectFieldProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "id"> {
+  label: string;
+  errors?: string[] | undefined;
+  hint?: ReactNode;
+  children: ReactNode;
+}
+
+export function SelectField({ label, errors, hint, className = "", children, ...rest }: SelectFieldProps) {
+  const id = useId();
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+        {label}
+      </label>
+      <select
+        {...rest}
+        id={id}
+        aria-invalid={errors?.length ? true : undefined}
+        className={`mt-1 block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-slate-900 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset sm:text-sm ${
+          errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-blue-700"
+        }`}
+      >
+        {children}
+      </select>
+      <FieldMessages id={id} errors={errors} hint={hint} />
+    </div>
+  );
+}
+
+export function CheckboxField({
+  label,
+  description,
+  checked,
+  onChange,
+  errors,
+  disabled,
+}: {
+  label: string;
+  description?: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  errors?: string[] | undefined;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-700"
+        />
+        <label htmlFor={id} className="text-sm">
+          <span className="font-medium text-slate-800">{label}</span>
+          {description && <span className="block text-slate-500">{description}</span>}
+        </label>
+      </div>
+      <FieldMessages id={id} errors={errors} />
+    </div>
+  );
+}
+
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function Badge({ tone = "slate", children }: { tone?: "slate" | "green" | "amber" | "red" | "blue"; children: ReactNode }) {
+  const styles = {
+    slate: "bg-slate-100 text-slate-700",
+    green: "bg-green-100 text-green-800",
+    amber: "bg-amber-100 text-amber-800",
+    red: "bg-red-100 text-red-800",
+    blue: "bg-blue-100 text-blue-800",
+  }[tone];
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles}`}>{children}</span>;
+}
+
+export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <section className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 ${className}`}>{children}</section>;
+}
+
+export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+      <span>
+        Page {page} of {pages} · {total} total
+      </span>
+      <div className="flex gap-2">
+        <Button variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="secondary" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
 }

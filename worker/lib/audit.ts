@@ -7,7 +7,14 @@ export type AuditAction =
   | "auth.password_change_failed"
   // Written by scripts/owner.mjs (command line), listed here for reference.
   | "admin.owner_created"
-  | "admin.password_reset";
+  | "admin.password_reset"
+  | "settings.updated"
+  | "gst_slab.created"
+  | "gst_slab.updated"
+  | "product.created"
+  | "product.updated"
+  | "party.created"
+  | "party.updated";
 
 export interface AuditEntry {
   action: AuditAction;
