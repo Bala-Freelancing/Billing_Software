@@ -18,7 +18,7 @@ import { pbkdf2Sync, randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createInterface } from "node:readline";
+import { createInterface, emitKeypressEvents } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { passwordProblems, USERNAME_PATTERN } from "../shared/password-policy.js";
@@ -98,7 +98,16 @@ async function nextPipedLine() {
   return value;
 }
 
-/** Prompts without echoing what is typed. Falls back to plain line input when not a terminal. */
+let keypressEventsEnabled = false;
+let lastSubmitAt = 0;
+
+/**
+ * Prompts for a secret, showing one "*" per character. Uses Node's keypress
+ * parser so terminal control sequences — arrow keys, Home/End, focus in/out
+ * reports, bracketed-paste markers, the "\r\n" Windows sends for Enter — are
+ * recognised as keys and never end up inside the password.
+ * Falls back to plain line input when input is piped (CI, scripts).
+ */
 async function promptHidden(question) {
   if (!process.stdin.isTTY) {
     process.stdout.write(question);
@@ -106,33 +115,60 @@ async function promptHidden(question) {
     process.stdout.write("\n");
     return line;
   }
+
+  const stdin = process.stdin;
+  if (!keypressEventsEnabled) {
+    emitKeypressEvents(stdin);
+    keypressEventsEnabled = true;
+  }
+
   return new Promise((resolve) => {
     process.stdout.write(question);
-    const stdin = process.stdin;
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    let value = "";
-    const onData = (chunk) => {
-      for (const ch of chunk) {
-        if (ch === "\r" || ch === "\n") {
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.off("data", onData);
-          process.stdout.write("\n");
-          resolve(value);
-          return;
+    const chars = [];
+    const startedAt = Date.now();
+
+    const finish = () => {
+      stdin.off("keypress", onKeypress);
+      stdin.setRawMode(false);
+      stdin.pause();
+      lastSubmitAt = Date.now();
+      process.stdout.write("\n");
+      resolve(chars.join(""));
+    };
+
+    const onKeypress = (str, key = {}) => {
+      if (key.ctrl && key.name === "c") {
+        stdin.setRawMode(false);
+        process.stdout.write("\n");
+        process.exit(130);
+      }
+      if (key.name === "return" || key.name === "enter") {
+        // Windows may send "\r\n" for one Enter: ignore the trailing "\n"
+        // if it lands on the next prompt right after the previous submit.
+        if (key.name === "enter" && chars.length === 0 && startedAt - lastSubmitAt < 200) return;
+        finish();
+        return;
+      }
+      if (key.name === "backspace") {
+        if (chars.length > 0) {
+          chars.pop();
+          process.stdout.write("\b \b");
         }
-        if (ch === "\u0003") {
-          stdin.setRawMode(false);
-          process.stdout.write("\n");
-          process.exit(130);
-        }
-        if (ch === "\u007f" || ch === "\b") value = value.slice(0, -1);
-        else if (ch >= " ") value += ch;
+        return;
+      }
+      // Anything that is not plain printable text (arrows, function keys,
+      // escape sequences, Ctrl/Alt combinations) is ignored.
+      if (!str || key.ctrl || key.meta || (key.sequence ?? "").startsWith("\u001b")) return;
+      for (const ch of str) {
+        if (ch < " " || ch === "\u007f") continue;
+        chars.push(ch);
+        process.stdout.write("*");
       }
     };
-    stdin.on("data", onData);
+
+    stdin.on("keypress", onKeypress);
+    stdin.setRawMode(true);
+    stdin.resume();
   });
 }
 
