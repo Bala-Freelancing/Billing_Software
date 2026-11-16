@@ -238,13 +238,3 @@ export type ScanResult =
   | { kind: "product"; product: Product }
   | { kind: "none"; code: string };
 
-export interface DashboardSummary {
-  activeProducts: number;
-  unitsInStock: number;
-  activeParties: number;
-  salesTodayPaise: number;
-  salesTodayCount: number;
-  /** Totals of party balances (opening balance + posted journal). */
-  receivablePaise: number;
-  payablePaise: number;
-}

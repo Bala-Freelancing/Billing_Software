@@ -309,13 +309,11 @@ describe("parties", () => {
 });
 
 describe("dashboard", () => {
-  it("summarises active products, stock and party balances", async () => {
-    const res = await get("/api/dashboard");
+  it("includes party opening balances in payables", async () => {
+    const res = await get("/api/stats/overview");
     expect(res.status).toBe(200);
     const d = (await res.json()) as Record<string, number>;
-    expect(d.activeProducts).toBeGreaterThan(0);
-    expect(d.unitsInStock).toBeGreaterThan(0);
     expect(d.payablePaise).toBeGreaterThanOrEqual(2500000); // Havells supplier opening balance above
-    expect((await call(env, "/api/dashboard")).status).toBe(401);
+    expect((await call(env, "/api/stats/overview")).status).toBe(401);
   });
 });
