@@ -2,9 +2,9 @@
 // Keeping them in one place guarantees the browser and server agree.
 import { z } from "zod";
 
-export const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
-export const PASSWORD_MIN_LENGTH = 12;
-export const PASSWORD_MAX_LENGTH = 128;
+import { PASSWORD_MAX_LENGTH, USERNAME_PATTERN } from "./password-policy.js";
+
+export { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordProblems, USERNAME_PATTERN } from "./password-policy.js";
 
 export const usernameSchema = z
   .string()
@@ -19,31 +19,6 @@ export const loginRequestSchema = z.object({
   password: z.string().min(1, "Enter your password").max(PASSWORD_MAX_LENGTH),
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
-
-/**
- * Returns a list of problems with a proposed new password (empty = acceptable).
- * Length matters far more than character classes, so the rule is a 12+
- * character passphrase that is not trivially guessable.
- */
-export function passwordProblems(password: string, username?: string): string[] {
-  const problems: string[] = [];
-  if (password.length < PASSWORD_MIN_LENGTH) {
-    problems.push(`Use at least ${PASSWORD_MIN_LENGTH} characters`);
-  }
-  if (password.length > PASSWORD_MAX_LENGTH) {
-    problems.push(`Use at most ${PASSWORD_MAX_LENGTH} characters`);
-  }
-  if (password.trim() !== password) {
-    problems.push("Don't start or end with a space");
-  }
-  if (password.length > 0 && new Set(password).size < 4) {
-    problems.push("Use more variety — too many repeated characters");
-  }
-  if (username && username.length >= 3 && password.toLowerCase().includes(username.toLowerCase())) {
-    problems.push("Don't include your username");
-  }
-  return problems;
-}
 
 export const changePasswordRequestSchema = z
   .object({
