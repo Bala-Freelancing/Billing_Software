@@ -1,3 +1,5 @@
+import { ExpenseApprovalPage, ExpenseDetailPage, ExpenseFormPage, ExpensesPage } from "./pages/accounts/ExpensePages";
+import { LedgersPage } from "./pages/accounts/LedgersPage";
 import { OutstandingPage, StatementPage } from "./pages/accounts/StatementPages";
 import { VoucherDetailPage, VoucherFormPage, VouchersPage } from "./pages/accounts/VoucherPages";
 import { StrictMode } from "react";
@@ -68,6 +70,12 @@ const router = createBrowserRouter([
               { path: "/payments/:id", element: <VoucherDetailPage key="payment" kind="payment" /> },
               { path: "/statement", element: <StatementPage /> },
               { path: "/outstanding", element: <OutstandingPage /> },
+              { path: "/ledgers", element: <LedgersPage /> },
+              { path: "/expenses", element: <ExpensesPage /> },
+              { path: "/expenses/new", element: <ExpenseFormPage key="new" /> },
+              { path: "/expenses/approval", element: <ExpenseApprovalPage /> },
+              { path: "/expenses/:id", element: <ExpenseDetailPage /> },
+              { path: "/expenses/:id/edit", element: <ExpenseFormPage key="edit" /> },
               { path: "/account", element: <AccountPage /> },
             ],
           },
