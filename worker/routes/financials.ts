@@ -33,6 +33,7 @@ import { todayIst } from "../../shared/gst";
 import { conflict, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
 import { auditIfChanged, idParam, nextStamp } from "../lib/route";
+import { STOCK_CTE } from "../lib/stock";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
 
@@ -61,24 +62,7 @@ const PERIOD_MOVEMENTS = `
    WHERE g.nature IN ('income', 'expense')`;
 
 /** Closing stock value at weighted-average cost as of ?1. */
-const STOCK_VALUE = `
-  WITH moves AS (
-    SELECT m.product_id, m.qty_delta,
-           CASE m.source_type
-             WHEN 'purchase' THEN (SELECT invoice_date FROM purchases WHERE id = m.source_id)
-             WHEN 'purchase_return' THEN (SELECT return_date FROM purchase_returns WHERE id = m.source_id)
-             WHEN 'sale' THEN (SELECT invoice_date FROM sales WHERE id = m.source_id)
-             WHEN 'sales_return' THEN (SELECT return_date FROM sales_returns WHERE id = m.source_id)
-             ELSE '0000-01-01' END AS d
-      FROM stock_movements m WHERE m.is_void = 0),
-  qty AS (SELECT product_id, SUM(qty_delta) AS q FROM moves WHERE d <= ?1 GROUP BY product_id),
-  cost AS (
-    SELECT product_id, SUM(v) AS v, SUM(n) AS n FROM (
-      SELECT product_id, quantity * rate_paise AS v, quantity AS n FROM opening_stock WHERE status = 'posted'
-      UNION ALL
-      SELECT i.product_id, i.taxable_paise, i.quantity FROM purchase_items i JOIN purchases p ON p.id = i.purchase_id
-       WHERE p.status = 'posted' AND p.invoice_date <= ?1
-    ) GROUP BY product_id)
+const STOCK_VALUE = `${STOCK_CTE}
   SELECT COALESCE(SUM(CASE WHEN q.q > 0 AND c.n > 0 THEN CAST(ROUND(q.q * c.v * 1.0 / c.n) AS INTEGER) ELSE 0 END), 0) AS value
     FROM qty q LEFT JOIN cost c ON c.product_id = q.product_id`;
 
