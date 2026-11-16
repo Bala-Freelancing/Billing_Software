@@ -17,8 +17,9 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Purchase", to: "/purchases" },
       { label: "Sales Return", to: "/sales-returns" },
       { label: "Purchase Return", to: "/purchase-returns" },
-      { label: "Receipt" },
-      { label: "Payment" },
+      { label: "Receipt", to: "/receipts" },
+      { label: "Payment", to: "/payments" },
+      { label: "Outstanding", to: "/outstanding" },
       { label: "Voucher" },
       { label: "Voucher Approval" },
     ],
@@ -36,7 +37,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
   },
   {
     title: "Financial Report",
-    items: [{ label: "Statement of Account" }, { label: "Trial Balance" }, { label: "Profit & Loss" }, { label: "Balance Sheet" }],
+    items: [{ label: "Statement of Account", to: "/statement" }, { label: "Trial Balance" }, { label: "Profit & Loss" }, { label: "Balance Sheet" }],
   },
   {
     title: "Master",

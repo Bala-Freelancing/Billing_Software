@@ -238,7 +238,7 @@ export interface DashboardSummary {
   activeParties: number;
   salesTodayPaise: number;
   salesTodayCount: number;
-  /** Totals of party balances; from opening balances until bills exist. */
+  /** Totals of party balances (opening balance + posted journal). */
   receivablePaise: number;
   payablePaise: number;
 }

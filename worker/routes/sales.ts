@@ -24,6 +24,7 @@ import {
 } from "../../shared/sales";
 import { isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
+import { guard, isGuardFailure } from "../lib/guard";
 import { JournalBuilder, journalStatements, readJournal } from "../lib/journal";
 import { audit, auditIfChanged, idParam } from "../lib/route";
 import { requireAuth, validate } from "../middleware";
@@ -36,11 +37,7 @@ type Row = Record<string, any>;
 const invalid = (message: string, field = "lines") => new AppError(400, "VALIDATION", message, { fields: { [field]: [message] } });
 const stockChanged = () =>
   new AppError(409, "STOCK_CHANGED", "Stock changed while saving (another bill may have just used these items). Please check the items and save again.");
-const isGuardFailure = (err: unknown) => err instanceof Error && /CHECK constraint failed: ok = 1/.test(`${err.message} ${String((err as { cause?: unknown }).cause ?? "")}`);
-
-/** Statement that aborts the batch unless `condition` (SQL) is true at that point. */
-const guard = (db: D1Database, condition: string, ...binds: unknown[]) =>
-  db.prepare(`INSERT INTO batch_guards (ok) SELECT CASE WHEN ${condition} THEN 1 ELSE 0 END`).bind(...binds);
+const hasReceipts = () => new AppError(409, "HAS_RECEIPTS", "Receipts are allocated to this invoice. Cancel those receipts first.");
 
 async function shop(db: D1Database) {
   return (await db.prepare("SELECT state_code, invoice_prefix FROM shop_settings WHERE id = 1").first<{ state_code: string; invoice_prefix: string }>()) ?? {
@@ -367,8 +364,12 @@ salesRoutes
     if (sale.returns.some((r) => r.status === "posted")) throw new AppError(409, "HAS_RETURNS", "Cancel the sales returns of this invoice first.");
     const serials = sale.items.flatMap((i) => i.serials);
     const now = Date.now();
+    const settled = "EXISTS (SELECT 1 FROM voucher_allocations a JOIN money_vouchers v ON v.id = a.voucher_id WHERE v.status = 'posted' AND a.target_type = 'sale' AND a.target_id = ?1)";
+    const isSettled = async () => Boolean((await db.prepare(`SELECT ${settled} AS x`).bind(id).first<{ x: number }>())?.x);
+    if (await isSettled()) throw hasReceipts();
     try {
-      const [update] = await db.batch([
+      const [, update] = await db.batch([
+        guard(db, `NOT ${settled}`, id),
         db.prepare("UPDATE sales SET status = 'cancelled', cancel_reason = ?1, updated_at = ?2 WHERE id = ?3 AND status = 'posted'").bind(reason, now, id),
         auditIfChanged(c, "sale.cancelled", { id, invoiceNo: sale.invoiceNo, reason, totalPaise: sale.totalPaise }),
         db
@@ -385,7 +386,10 @@ salesRoutes
       ]);
       if (!update?.meta.changes) throw new AppError(409, "ALREADY_CANCELLED", "This invoice is already cancelled.");
     } catch (err) {
-      if (isGuardFailure(err)) throw new AppError(409, "UNITS_MOVED", "Some units of this invoice are no longer marked as sold. Reload and check.");
+      if (isGuardFailure(err)) {
+        if (await isSettled()) throw hasReceipts();
+        throw new AppError(409, "UNITS_MOVED", "Some units of this invoice are no longer marked as sold. Reload and check.");
+      }
       throw err;
     }
     return c.json(await readSale(db, id));
