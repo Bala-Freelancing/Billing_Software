@@ -30,14 +30,14 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { label: "Sales Report", to: "/reports/sales" },
       { label: "Purchase Report", to: "/reports/purchases" },
       { label: "Receipt / Payment", to: "/receipts" },
-      { label: "Ledger Report" },
+      { label: "Ledger Report", to: "/reports/ledger" },
       { label: "Product Report" },
       { label: "GST Slab PDF", to: "/reports/gst" },
     ],
   },
   {
     title: "Financial Report",
-    items: [{ label: "Statement of Account", to: "/statement" }, { label: "Trial Balance" }, { label: "Profit & Loss" }, { label: "Balance Sheet" }],
+    items: [{ label: "Statement of Account", to: "/statement" }, { label: "Trial Balance", to: "/trial-balance" }, { label: "Profit & Loss", to: "/profit-loss" }, { label: "Balance Sheet", to: "/balance-sheet" }],
   },
   {
     title: "Master",

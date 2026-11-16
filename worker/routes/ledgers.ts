@@ -56,6 +56,7 @@ const toLedger = (r: Row): Ledger => ({
   isSystem: r.system_key !== null,
   isActive: r.is_active === 1,
   inUse: r.in_use === 1,
+  openingBalancePaise: r.opening_balance_paise ?? 0,
   updatedAt: r.updated_at,
 });
 
