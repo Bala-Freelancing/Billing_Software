@@ -147,12 +147,12 @@ export function AccountPage() {
         )}
       </div>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <section className="rounded-xl border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Change password</h2>
         <ChangePasswordForm />
       </section>
 
-      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <section className="rounded-xl border border-slate-200 bg-white p-6">
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Devices</h2>
         <SignOutEverywhere />
       </section>

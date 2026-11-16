@@ -50,7 +50,7 @@ export function LoginPage() {
         <form
           onSubmit={handleSubmit}
           noValidate
-          className="mt-8 space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+          className="mt-8 space-y-5 rounded-xl border border-slate-200 bg-white p-6"
         >
           {formError && <Alert tone="error">{formError}</Alert>}
           <TextField

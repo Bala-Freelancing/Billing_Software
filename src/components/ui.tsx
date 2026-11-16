@@ -4,7 +4,7 @@ import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, t
 type ButtonVariant = "primary" | "secondary" | "danger";
 
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: "bg-blue-700 text-white hover:bg-blue-800 focus-visible:outline-blue-700",
+  primary: "bg-slate-900 text-white hover:bg-slate-800 focus-visible:outline-slate-900",
   secondary:
     "bg-white text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus-visible:outline-slate-500",
   danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
@@ -21,7 +21,7 @@ export function Button({ variant = "primary", loading = false, disabled, classNa
       {...rest}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${buttonStyles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${buttonStyles[variant]} ${className}`}
     >
       {loading && <Spinner className="h-4 w-4" />}
       {children}
@@ -58,7 +58,7 @@ export function TextField({ label, errors, hint, className = "", ...rest }: Fiel
         aria-invalid={errors?.length ? true : undefined}
         aria-describedby={describedBy}
         className={`mt-1 block w-full rounded-lg border-0 px-3 py-2.5 text-slate-900 shadow-sm ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm ${
-          errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-blue-700"
+          errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-slate-900"
         }`}
       />
       <FieldMessages id={id} errors={errors} hint={hint} />
@@ -83,7 +83,7 @@ export function PasswordField({ label, errors, hint, className = "", ...rest }: 
           aria-invalid={errors?.length ? true : undefined}
           aria-describedby={describedBy}
           className={`block w-full rounded-lg border-0 py-2.5 pl-3 pr-16 text-slate-900 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset sm:text-sm ${
-            errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-blue-700"
+            errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-slate-900"
           }`}
         />
         <button
@@ -156,7 +156,7 @@ export function SelectField({ label, errors, hint, className = "", children, ...
         id={id}
         aria-invalid={errors?.length ? true : undefined}
         className={`mt-1 block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-slate-900 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset sm:text-sm ${
-          errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-blue-700"
+          errors?.length ? "ring-red-400 focus:ring-red-600" : "ring-slate-300 focus:ring-slate-900"
         }`}
       >
         {children}
@@ -191,7 +191,7 @@ export function CheckboxField({
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-700"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
         />
         <label htmlFor={id} className="text-sm">
           <span className="font-medium text-slate-800">{label}</span>
@@ -227,7 +227,7 @@ export function Badge({ tone = "slate", children }: { tone?: "slate" | "green" |
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 ${className}`}>{children}</section>;
+  return <section className={`rounded-xl border border-slate-200 bg-white p-6 ${className}`}>{children}</section>;
 }
 
 export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {

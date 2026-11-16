@@ -56,7 +56,7 @@ export function ScanInput({ onScan, placeholder = "Scan or type a barcode / seri
             autoCapitalize="characters"
             spellCheck={false}
             aria-label="Scan barcode or serial number"
-            className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 font-mono text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:font-sans placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-700 sm:text-sm"
+            className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 font-mono text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:font-sans placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-slate-900 sm:text-sm"
           />
         </div>
         <Button type="button" variant="secondary" onClick={() => setCameraOpen(true)} disabled={disabled} aria-label="Scan with camera">
