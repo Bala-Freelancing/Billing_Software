@@ -214,3 +214,12 @@ export type ScanResult =
   | { kind: "unit"; serial: string; status: string; product: Product }
   | { kind: "product"; product: Product }
   | { kind: "none"; code: string };
+
+export interface DashboardSummary {
+  activeProducts: number;
+  unitsInStock: number;
+  activeParties: number;
+  /** Totals of party balances; from opening balances until bills exist. */
+  receivablePaise: number;
+  payablePaise: number;
+}

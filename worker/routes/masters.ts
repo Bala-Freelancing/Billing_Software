@@ -16,6 +16,7 @@ import {
   type PartyType,
   type Product,
   type ScanResult,
+  type DashboardSummary,
   type ShopSettings,
   type Unit,
 } from "../../shared/masters";
@@ -216,7 +217,7 @@ function paged<T>(items: T[], total: number, page: number): ListResponse<T> {
 
 export const masterRoutes = new Hono<AppEnv>();
 // Scoped to this module's paths: a bare "*" would also cover /api/auth/login once mounted at /api.
-for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/products/*", "/parties", "/parties/*", "/scan/*"]) {
+for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/products/*", "/parties", "/parties/*", "/scan/*", "/dashboard"]) {
   masterRoutes.use(path, requireAuth);
 }
 masterRoutes
@@ -465,6 +466,26 @@ masterRoutes
       partyUniqueError(err);
     }
     return c.json(await getParty(db, id));
+  })
+
+  // Dashboard summary (grows with each module)
+  .get("/dashboard", async (c) => {
+    const row = await c.env.DB.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM products WHERE is_active = 1) AS active_products,
+         (SELECT COUNT(*) FROM product_units WHERE status = 'in_stock') AS units_in_stock,
+         (SELECT COUNT(*) FROM parties WHERE is_active = 1) AS active_parties,
+         (SELECT COALESCE(SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise > 0) AS receivable_paise,
+         (SELECT COALESCE(-SUM(opening_balance_paise), 0) FROM parties WHERE opening_balance_paise < 0) AS payable_paise`,
+    ).first<{ active_products: number; units_in_stock: number; active_parties: number; receivable_paise: number; payable_paise: number }>();
+    const summary: DashboardSummary = {
+      activeProducts: row?.active_products ?? 0,
+      unitsInStock: row?.units_in_stock ?? 0,
+      activeParties: row?.active_parties ?? 0,
+      receivablePaise: row?.receivable_paise ?? 0,
+      payablePaise: row?.payable_paise ?? 0,
+    };
+    return c.json(summary);
   })
 
   // Barcode / serial lookup used by every scan box
