@@ -1,0 +1,76 @@
+name: Owner account
+
+# Run by hand from the Actions tab to create the owner account on the live
+# database, or to reset a forgotten owner password, without installing
+# anything locally. The password comes from the OWNER_PASSWORD repository
+# secret (GitHub hides it in logs), never from a form field, because form
+# inputs are stored in the run history in plain text.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        options: [create, reset-password]
+        default: create
+      username:
+        description: Username (3–32 lowercase letters, numbers, . _ -)
+        type: string
+        default: owner
+      display_name:
+        description: Name shown in the app (only used for create)
+        type: string
+        default: Shop Owner
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+      # Inputs go through env vars, never pasted into the script, so a crafted
+      # value cannot inject shell commands.
+      ACTION: ${{ inputs.action }}
+      USERNAME: ${{ inputs.username }}
+      DISPLAY_NAME: ${{ inputs.display_name }}
+    steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          [ -z "$CLOUDFLARE_API_TOKEN" ] && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -z "$OWNER_PASSWORD" ] && missing="$missing OWNER_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Resolve production database
+        run: node scripts/ci-resolve-d1.mjs
+
+      - name: Run owner script
+        run: |
+          if [ "$ACTION" = "create" ]; then
+            printf '%s\n%s\n' "$OWNER_PASSWORD" "$OWNER_PASSWORD" \
+              | node scripts/owner.mjs create --remote --username "$USERNAME" --name "$DISPLAY_NAME"
+          else
+            printf '%s\n%s\n' "$OWNER_PASSWORD" "$OWNER_PASSWORD" \
+              | node scripts/owner.mjs reset-password --remote --username "$USERNAME"
+          fi
+          echo "Done. Sign in, then change the password from the Account page and delete the OWNER_PASSWORD secret." >> "$GITHUB_STEP_SUMMARY"
