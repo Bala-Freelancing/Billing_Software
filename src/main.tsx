@@ -1,3 +1,4 @@
+import { LedgerGroupsPage, ProductGroupsPage, UnitsPage } from "./pages/masters/CatalogPages";
 import { ExpenseApprovalPage, ExpenseDetailPage, ExpenseFormPage, ExpensesPage } from "./pages/accounts/ExpensePages";
 import { LedgersPage } from "./pages/accounts/LedgersPage";
 import { OutstandingPage, StatementPage } from "./pages/accounts/StatementPages";
@@ -71,6 +72,9 @@ const router = createBrowserRouter([
               { path: "/statement", element: <StatementPage /> },
               { path: "/outstanding", element: <OutstandingPage /> },
               { path: "/ledgers", element: <LedgersPage /> },
+              { path: "/ledger-groups", element: <LedgerGroupsPage /> },
+              { path: "/product-groups", element: <ProductGroupsPage /> },
+              { path: "/units", element: <UnitsPage /> },
               { path: "/expenses", element: <ExpensesPage /> },
               { path: "/expenses/new", element: <ExpenseFormPage key="new" /> },
               { path: "/expenses/approval", element: <ExpenseApprovalPage /> },

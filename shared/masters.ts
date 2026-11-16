@@ -108,8 +108,14 @@ export interface GstSlab {
 
 // ── Products ─────────────────────────────────────────────────────────────────
 
+/** Built-in unit codes; more can be added under Product Units. */
 export const UNITS = ["PCS", "NOS", "SET", "BOX", "PKT", "MTR", "COIL"] as const;
-export type Unit = (typeof UNITS)[number];
+export type Unit = string;
+export const unitCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{1,8}$/, "Unit code: 1–8 letters or digits");
 
 /** Barcodes and serials are compared upper-case with no whitespace. */
 export const normaliseCode = (value: string) => value.replace(/\s+/g, "").toUpperCase();
@@ -132,7 +138,7 @@ export const productSchema = z
       .trim()
       .regex(/^(\d{4}|\d{6}|\d{8})$/, "HSN code must be 4, 6 or 8 digits"),
     gstSlabId: z.number().int().positive("Choose a GST rate"),
-    unit: z.enum(UNITS),
+    unit: unitCode,
     mrpPaise: paise,
     sellingPricePaise: paise,
     barcode,

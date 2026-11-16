@@ -25,7 +25,9 @@ import {
   type ExpenseDetail,
   type ExpenseSummary,
   type Ledger,
-  type LedgerGroup,
+  ledgerGroupSchema,
+  updateLedgerGroupSchema,
+  type LedgerGroupRow,
 } from "../../shared/ledgers";
 import { PAGE_SIZE, type ListResponse } from "../../shared/masters";
 import { cancelSchema } from "../../shared/purchase";
@@ -75,6 +77,37 @@ const duplicateName = (err: unknown): never => {
   if (isUniqueViolation(err, "ledgers.name")) throw invalid("A ledger with this name already exists", "name");
   throw err;
 };
+
+const toGroupRow = (g: Row): LedgerGroupRow => ({
+  id: g.id,
+  name: g.name,
+  nature: g.nature,
+  systemKey: g.system_key,
+  allowsLedgers: !PARTY_GROUPS.includes(g.root_key),
+  parentId: g.parent_id,
+  parentName: g.parent_name,
+  isSystem: g.system_key !== null,
+  ledgerCount: g.ledger_count,
+  updatedAt: g.updated_at,
+});
+
+/** ledger_groups.name is unique case-sensitively (0003); names must also differ ignoring case. */
+async function assertGroupNameFree(db: D1Database, name: string, exceptId: number) {
+  const clash = await db.prepare("SELECT 1 FROM ledger_groups WHERE name = ?1 COLLATE NOCASE AND id <> ?2").bind(name, exceptId).first();
+  if (clash) throw invalid("A group with this name already exists", "name");
+}
+
+async function getGroupRow(db: D1Database, id: number) {
+  const r = await db
+    .prepare(
+      `SELECT g.*, pg.name AS parent_name, COALESCE(pg.system_key, g.system_key) AS root_key,
+              (SELECT COUNT(*) FROM ledgers l WHERE l.group_id = g.id) AS ledger_count
+         FROM ledger_groups g LEFT JOIN ledger_groups pg ON pg.id = g.parent_id WHERE g.id = ?1`,
+    )
+    .bind(id)
+    .first<Row>();
+  return r ? toGroupRow(r) : null;
+}
 
 // ── Expense vouchers ────────────────────────────────────────────────────────
 
@@ -189,13 +222,64 @@ const GST_COLUMNS = "gst_bill, supplier_name, supplier_gstin, supplier_invoice_n
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 export const ledgerRoutes = new Hono<AppEnv>();
-for (const path of ["/ledgers", "/ledgers/*", "/ledger-groups", "/expenses", "/expenses/*"]) ledgerRoutes.use(path, requireAuth);
+for (const path of ["/ledgers", "/ledgers/*", "/ledger-groups", "/ledger-groups/*", "/expenses", "/expenses/*"]) ledgerRoutes.use(path, requireAuth);
 
 ledgerRoutes
   .get("/ledger-groups", async (c) => {
-    const { results } = await c.env.DB.prepare("SELECT * FROM ledger_groups ORDER BY nature, name").all<Row>();
-    const items: LedgerGroup[] = results.map((g) => ({ id: g.id, name: g.name, nature: g.nature, systemKey: g.system_key, allowsLedgers: !PARTY_GROUPS.includes(g.system_key) }));
+    const { results } = await c.env.DB.prepare(
+      `SELECT g.*, pg.name AS parent_name, COALESCE(pg.system_key, g.system_key) AS root_key,
+              (SELECT COUNT(*) FROM ledgers l WHERE l.group_id = g.id) AS ledger_count
+         FROM ledger_groups g LEFT JOIN ledger_groups pg ON pg.id = g.parent_id
+        ORDER BY g.nature, COALESCE(pg.name, g.name), g.parent_id IS NOT NULL, g.name`,
+    ).all<Row>();
+    const items: LedgerGroupRow[] = results.map(toGroupRow);
     return c.json({ items });
+  })
+
+  // Sub-groups sit one level under a built-in group and take its nature
+  // (so they land in the right place in P&L / Balance Sheet).
+  .post("/ledger-groups", validate("json", ledgerGroupSchema), async (c) => {
+    const input = c.req.valid("json");
+    const db = c.env.DB;
+    const parent = await db.prepare("SELECT id, nature, system_key, parent_id FROM ledger_groups WHERE id = ?1").bind(input.parentId).first<Row>();
+    if (!parent || parent.system_key === null) throw invalid("Choose a main (built-in) group", "parentId");
+    if (PARTY_GROUPS.includes(parent.system_key)) throw invalid("Customers and suppliers are managed under Parties", "parentId");
+    await assertGroupNameFree(db, input.name, 0);
+    const now = Date.now();
+    try {
+      const [ins] = await db.batch([
+        db
+          .prepare("INSERT INTO ledger_groups (name, nature, parent_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4) RETURNING id")
+          .bind(input.name, parent.nature, parent.id, now),
+        audit(c, "ledger_group.created", { name: input.name, parentId: parent.id }),
+      ]);
+      return c.json(await getGroupRow(db, (ins?.results?.[0] as { id: number }).id), 201);
+    } catch (err) {
+      if (isUniqueViolation(err, "ledger_groups.name")) throw invalid("A group with this name already exists", "name");
+      throw err;
+    }
+  })
+
+  .put("/ledger-groups/:id", validate("json", updateLedgerGroupSchema), async (c) => {
+    const id = idParam(c);
+    const input = c.req.valid("json");
+    const db = c.env.DB;
+    const current = await getGroupRow(db, id);
+    if (!current) throw notFound("Ledger group");
+    if (current.isSystem) throw new AppError(400, "SYSTEM_GROUP", "Built-in groups can't be changed.");
+    if (current.updatedAt !== input.updatedAt) throw conflict();
+    await assertGroupNameFree(db, input.name, id);
+    try {
+      const [update] = await db.batch([
+        db.prepare("UPDATE ledger_groups SET name = ?1, updated_at = ?2 WHERE id = ?3 AND updated_at = ?4 AND system_key IS NULL").bind(input.name, nextStamp(current.updatedAt), id, input.updatedAt),
+        auditIfChanged(c, "ledger_group.updated", { id, from: current.name, to: input.name }),
+      ]);
+      if (!update?.meta.changes) throw conflict();
+    } catch (err) {
+      if (isUniqueViolation(err, "ledger_groups.name")) throw invalid("A group with this name already exists", "name");
+      throw err;
+    }
+    return c.json(await getGroupRow(db, id));
   })
 
   .get("/ledgers", validate("query", ledgerListQuery), async (c) => {

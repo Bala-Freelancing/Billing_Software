@@ -21,6 +21,9 @@ beforeAll(async () => {
   ctx = await createTestContext();
   env = ctx.env;
   cookie = await login(env, await createUser(env));
+  for (const name of ["Fans", "Switches"]) {
+    await call(env, "/api/product-groups", { method: "POST", cookie, body: { name, isActive: true } });
+  }
 });
 afterAll(async () => {
   await ctx.dispose();

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { UNITS, type GstSlab, type Product } from "../../../shared/masters";
+import type { ProductGroup, UnitRow } from "../../../shared/catalog";
+import type { GstSlab, Product } from "../../../shared/masters";
 import { formatPaise, formatRate, paiseToInput, parseRupees, splitInclusive } from "../../../shared/money";
 import { Alert, Button, Card, CheckboxField, PageHeader, SelectField, Spinner, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
@@ -58,10 +59,12 @@ export function ProductFormPage() {
   const [search] = useSearchParams();
   const slabs = useFetch<{ items: GstSlab[] }>("/gst-slabs");
   const existing = useFetch<Product>(isNew ? null : `/products/${id}`);
+  const groups = useFetch<{ items: ProductGroup[] }>("/product-groups");
+  const units = useFetch<{ items: UnitRow[] }>("/units");
 
-  const error = slabs.error ?? existing.error;
+  const error = slabs.error ?? existing.error ?? groups.error ?? units.error;
   if (error) return <Alert tone="error">{error}</Alert>;
-  if (!slabs.data || slabs.loading || (!isNew && (existing.loading || !existing.data))) {
+  if (!slabs.data || slabs.loading || !groups.data || !units.data || (!isNew && (existing.loading || !existing.data))) {
     return <Spinner className="mx-auto mt-10 h-6 w-6" />;
   }
   return (
@@ -69,12 +72,26 @@ export function ProductFormPage() {
       key={id ?? "new"}
       product={isNew ? null : existing.data}
       slabs={slabs.data.items}
+      groups={groups.data.items}
+      units={units.data.items}
       initialBarcode={search.get("barcode") ?? ""}
     />
   );
 }
 
-function ProductForm({ product, slabs, initialBarcode }: { product: Product | null; slabs: GstSlab[]; initialBarcode: string }) {
+function ProductForm({
+  product,
+  slabs,
+  groups,
+  units,
+  initialBarcode,
+}: {
+  product: Product | null;
+  slabs: GstSlab[];
+  groups: ProductGroup[];
+  units: UnitRow[];
+  initialBarcode: string;
+}) {
   const isNew = product === null;
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(() => {
@@ -168,7 +185,17 @@ function ProductForm({ product, slabs, initialBarcode }: { product: Product | nu
         <Card>
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField label="Brand" value={form.brand} onChange={(e) => set("brand", e.target.value)} errors={errors.brand} required />
-            <TextField label="Category" placeholder="Fans, Switches, Lighting…" value={form.category} onChange={(e) => set("category", e.target.value)} errors={errors.category} />
+            <SelectField label="Product group" value={form.category} onChange={(e) => set("category", e.target.value)} errors={errors.category} hint={groups.length === 0 ? "Add groups under Master → Product Group" : undefined}>
+              <option value="">No group</option>
+              {groups
+                .filter((g) => g.isActive || g.name === form.category)
+                .map((g) => (
+                  <option key={g.id} value={g.name}>
+                    {g.name}
+                    {g.isActive ? "" : " (inactive)"}
+                  </option>
+                ))}
+            </SelectField>
             <TextField
               className="sm:col-span-2"
               label="Product name / model"
@@ -190,11 +217,13 @@ function ProductForm({ product, slabs, initialBarcode }: { product: Product | nu
                 ))}
             </SelectField>
             <SelectField label="Unit" value={form.unit} onChange={(e) => set("unit", e.target.value)} errors={errors.unit}>
-              {UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
+              {units
+                .filter((u) => u.isActive || u.code === form.unit)
+                .map((u) => (
+                  <option key={u.code} value={u.code}>
+                    {u.code} – {u.name}
+                  </option>
+                ))}
             </SelectField>
             <TextField label="Product barcode (optional)" value={form.barcode} onChange={(e) => set("barcode", e.target.value)} errors={errors.barcode} hint="The model barcode on the box, if any" className="font-mono" />
           </div>
