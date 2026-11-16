@@ -29,7 +29,7 @@ Project rules for contributors (and for Claude) are in [`CLAUDE.md`](CLAUDE.md).
 
 No Cloudflare account is needed for local development — the database runs locally.
 
-**Requirements:** Node.js 22.18 or newer, Git.
+**Requirements:** Node.js 22.12 or newer, Git.
 
 ```bash
 npm ci                                   # install exact locked versions

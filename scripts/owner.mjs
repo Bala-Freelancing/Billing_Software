@@ -19,11 +19,11 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { passwordProblems, USERNAME_PATTERN } from "../shared/password-policy.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const { passwordProblems, USERNAME_PATTERN } = await import(pathToFileURL(path.join(ROOT, "shared/auth.ts")).href);
 
 const MIN_ITERATIONS = 10_000;
 const MAX_ITERATIONS = 100_000;
