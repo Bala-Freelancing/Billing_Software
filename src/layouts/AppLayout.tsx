@@ -14,9 +14,9 @@ const NAV: { title: string; items: NavItem[] }[] = [
     title: "Transaction",
     items: [
       { label: "Sales" },
-      { label: "Purchase" },
+      { label: "Purchase", to: "/purchases" },
       { label: "Sales Return" },
-      { label: "Purchase Return" },
+      { label: "Purchase Return", to: "/purchase-returns" },
       { label: "Receipt" },
       { label: "Payment" },
       { label: "Voucher" },
@@ -43,6 +43,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Parties (Ledger)", to: "/parties" },
       { label: "Products", to: "/products" },
+      { label: "Product Opening Stock", to: "/opening-stock" },
       { label: "Ledger Group" },
       { label: "Product Group" },
       { label: "Settings & GST", to: "/settings" },

@@ -14,7 +14,13 @@ export type AuditAction =
   | "product.created"
   | "product.updated"
   | "party.created"
-  | "party.updated";
+  | "party.updated"
+  | "purchase.created"
+  | "purchase.cancelled"
+  | "opening_stock.created"
+  | "opening_stock.cancelled"
+  | "purchase_return.created"
+  | "purchase_return.cancelled";
 
 export interface AuditEntry {
   action: AuditAction;

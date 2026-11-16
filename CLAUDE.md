@@ -37,6 +37,12 @@ real money. Treat every change accordingly.
   same batch. `audit_log` is append-only (enforced by triggers).
 - Store the GST rate on each bill line at billing time, never only on the product.
 - Tables use `STRICT`; add indexes for every column used in report filters.
+- **Documents carry a client-generated `uid`** (idempotency key): saving the same form
+  twice returns the first result. Later statements in the batch find the new row by uid.
+- **Bulk rows use `json_each()`** (items, serial units, stock movements, journal lines)
+  so one save stays within the free plan's 50 queries per request.
+- **Every money document posts a balanced journal** via `JournalBuilder`; cancelling marks
+  the entry cancelled. Totals are always recomputed on the server (`shared/gst.ts`).
 
 ## Security
 
