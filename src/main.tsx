@@ -18,7 +18,6 @@ import { NotFoundPage, RouteErrorPage } from "./pages/ErrorPages";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { PartiesPage } from "./pages/parties/PartiesPage";
-import { PartyFormPage } from "./pages/parties/PartyFormPage";
 import { ProductsPage } from "./pages/products/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { OpeningStockPage } from "./pages/purchases/OpeningStockPage";
@@ -51,8 +50,8 @@ const router = createBrowserRouter([
               { path: "/products/new", element: <ProductsPage /> },
               { path: "/products/:id", element: <ProductsPage /> },
               { path: "/parties", element: <PartiesPage /> },
-              { path: "/parties/new", element: <PartyFormPage key="new" /> },
-              { path: "/parties/:id", element: <PartyFormPage /> },
+              { path: "/parties/new", element: <PartiesPage /> },
+              { path: "/parties/:id", element: <PartiesPage /> },
               { path: "/settings", element: <SettingsPage /> },
               { path: "/purchases", element: <PurchasesPage /> },
               { path: "/purchases/new", element: <PurchaseFormPage /> },

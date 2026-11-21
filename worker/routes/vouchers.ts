@@ -37,6 +37,7 @@ import {
   ageing,
   openBillsSql,
   openingOutstandingSql,
+  partyBalanceSql,
   purchaseOutstandingSql,
   saleOutstandingSql,
   toOutstandingBill,
@@ -338,10 +339,7 @@ voucherRoutes
     const today = todayIst();
     const [balances, bills] = await db.batch([
       db.prepare(
-        `SELECT p.id, p.name, p.phone,
-                p.opening_balance_paise + COALESCE((SELECT SUM(jl.debit_paise - jl.credit_paise) FROM journal_lines jl
-                   JOIN journal_entries e ON e.id = jl.entry_id WHERE jl.party_id = p.id AND e.status = 'posted'), 0) AS balance
-           FROM parties p`,
+        `SELECT p.id, p.name, p.phone, ${partyBalanceSql()} AS balance FROM parties p`,
       ),
       db.prepare(openBillsSql(kind, () => "1")),
     ]);
