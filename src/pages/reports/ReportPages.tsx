@@ -113,7 +113,7 @@ export function GstReportPage() {
     setPdfBusy(true);
     setPdfError(null);
     try {
-      const shop = await api<ShopSettings>("/settings");
+      const shop = await api<ShopSettings>("/settings/shop");
       const { downloadGstPdf } = await import("../../lib/gstPdf");
       await downloadGstPdf(data, shop);
     } catch (err) {

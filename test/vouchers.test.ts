@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { todayIst } from "../shared/gst";
-import type { DashboardSummary, GstSlab, ListResponse, Party, Product } from "../shared/masters";
+import type { GstSlab, ListResponse, Party, Product } from "../shared/masters";
 import type { SaleDetail } from "../shared/sales";
 import { allocateOldestFirst, type OutstandingBill, type OutstandingParty, type Statement, type VoucherDetail } from "../shared/vouchers";
 import { call, createTestContext, createUser, errorCode, login, type TestContext } from "./helpers";
@@ -243,7 +243,7 @@ describe("statement and outstanding", () => {
 
     const out = await json<{ items: OutstandingParty[]; totalPaise: number }>(await get("/api/outstanding?kind=receipt"));
     expect(out.items.find((i) => i.partyId === c.id)).toMatchObject({ balancePaise: st.closingPaise, oldestDays: 45, overduePaise: st.closingPaise }) // both due dates have passed;
-    const dash = await json<DashboardSummary>(await get("/api/dashboard"));
+    const dash = await json<{ receivablePaise: number }>(await get("/api/stats/overview"));
     expect(dash.receivablePaise).toBe(out.totalPaise);
   });
 

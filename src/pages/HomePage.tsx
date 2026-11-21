@@ -63,7 +63,8 @@ export function HomePage() {
             <h2 className="text-sm font-semibold">Sales, last 6 months</h2>
             <Link to="/stats" className="text-xs font-semibold text-slate-600 hover:text-slate-900">Statistics →</Link>
           </div>
-          {data && <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-slate-800", values: data.trend.map((t) => t.salesPaise) }]} />}
+          {data && data.trend.every((t) => t.salesPaise === 0) && <p className="py-16 text-center text-sm text-slate-500">No sales yet. Your monthly sales will appear here.</p>}
+          {data && data.trend.some((t) => t.salesPaise !== 0) && <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-slate-800", values: data.trend.map((t) => t.salesPaise) }]} />}
         </Card>
         <Card className="p-5">
           <h2 className="mb-3 text-sm font-semibold">Recent invoices</h2>
