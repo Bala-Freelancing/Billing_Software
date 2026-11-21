@@ -297,6 +297,20 @@ describe("parties", () => {
     expect(await ids("customer")).not.toContain(supplier.id);
   });
 
+  it("stores credit limit and days, and shows the current balance", async () => {
+    const res = await send("POST", "/api/parties", partyInput({ name: "Credit Test Agencies", openingBalancePaise: 150000, creditLimitPaise: 10000000, creditDays: 30 }));
+    expect(res.status).toBe(201);
+    const p = (await res.json()) as Party;
+    expect(p).toMatchObject({ creditLimitPaise: 10000000, creditDays: 30, balancePaise: 150000 });
+    const listed = ((await (await get("/api/parties?q=Credit%20Test")).json()) as ListResponse<Party>).items[0];
+    expect(listed?.balancePaise).toBe(150000);
+    // Older clients that don't send the new fields still work (defaults 0).
+    expect(((await (await send("POST", "/api/parties", partyInput({ name: "No Credit Fields" }))).json()) as Party).creditDays).toBe(0);
+    for (const bad of [{ creditDays: 400 }, { creditLimitPaise: -1 }]) {
+      expect((await send("POST", "/api/parties", partyInput({ name: "Bad Credit", ...bad }))).status, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
   it("updates with optimistic locking", async () => {
     const party = (await (await send("POST", "/api/parties", partyInput({ name: "Lock Test Stores" }))).json()) as Party;
     const ok = await send("PUT", `/api/parties/${party.id}`, { ...partyInput({ name: "Lock Test Stores", city: "Madurai" }), updatedAt: party.updatedAt });

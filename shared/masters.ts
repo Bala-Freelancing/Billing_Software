@@ -189,6 +189,10 @@ export const partySchema = z
     stateCode,
     pincode,
     openingBalancePaise: signedPaise,
+    /** 0 = no limit. */
+    creditLimitPaise: paise.optional().default(0),
+    /** Days allowed before a credit bill is overdue; 0 = not set. */
+    creditDays: z.number().int().min(0).max(365, "At most 365 days").optional().default(0),
     isActive: z.boolean(),
   })
   .superRefine((v, ctx) => {
@@ -213,6 +217,10 @@ export interface Party {
   stateCode: string;
   pincode: string;
   openingBalancePaise: number;
+  creditLimitPaise: number;
+  creditDays: number;
+  /** Current balance: positive = the party owes the shop, negative = the shop owes the party. */
+  balancePaise: number;
   isActive: boolean;
   updatedAt: number;
 }

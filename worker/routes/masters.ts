@@ -23,7 +23,7 @@ import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib
 import { AppError } from "../lib/errors";
 import { audit, auditIfChanged, idParam, nextStamp } from "../lib/route";
 import { clearGuards, guard, isGuardFailure } from "../lib/guard";
-import { openingOutstandingSql } from "../lib/outstanding";
+import { openingOutstandingSql, partyBalanceSql } from "../lib/outstanding";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
 
@@ -129,6 +129,9 @@ interface PartyRow {
   state_code: string;
   pincode: string;
   opening_balance_paise: number;
+  credit_limit_paise: number;
+  credit_days: number;
+  balance: number;
   is_active: number;
   is_counter: number;
   updated_at: number;
@@ -147,6 +150,9 @@ const toParty = (r: PartyRow): Party => ({
   stateCode: r.state_code,
   pincode: r.pincode,
   openingBalancePaise: r.opening_balance_paise,
+  creditLimitPaise: r.credit_limit_paise,
+  creditDays: r.credit_days,
+  balancePaise: r.balance,
   isActive: r.is_active === 1,
   updatedAt: r.updated_at,
 });
@@ -156,8 +162,10 @@ async function getProduct(db: D1Database, id: number): Promise<Product | null> {
   return row ? toProduct(row) : null;
 }
 
+const PARTY_SELECT = `SELECT p.*, ${partyBalanceSql()} AS balance FROM parties p`;
+
 async function getParty(db: D1Database, id: number): Promise<Party | null> {
-  const row = await db.prepare("SELECT * FROM parties WHERE id = ?1").bind(id).first<PartyRow>();
+  const row = await db.prepare(`${PARTY_SELECT} WHERE p.id = ?1`).bind(id).first<PartyRow>();
   return row ? toParty(row) : null;
 }
 
@@ -428,8 +436,8 @@ masterRoutes
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const db = c.env.DB;
     const [rows, count] = await db.batch([
-      db.prepare(`SELECT * FROM parties ${clause} ORDER BY name COLLATE NOCASE LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`).bind(...binds),
-      db.prepare(`SELECT COUNT(*) AS n FROM parties ${clause}`).bind(...binds),
+      db.prepare(`${PARTY_SELECT} ${clause} ORDER BY p.name COLLATE NOCASE LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`).bind(...binds),
+      db.prepare(`SELECT COUNT(*) AS n FROM parties p ${clause}`).bind(...binds),
     ]);
     const items = (rows?.results as unknown as PartyRow[]).map(toParty);
     const total = (count?.results[0] as { n: number } | undefined)?.n ?? 0;
@@ -449,11 +457,11 @@ masterRoutes
         db
           .prepare(
             `INSERT INTO parties (name, party_type, phone, email, gstin, address, city, state_code, pincode,
-               opening_balance_paise, is_active, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12) RETURNING id`,
+               opening_balance_paise, is_active, created_at, updated_at, credit_limit_paise, credit_days)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12, ?13, ?14) RETURNING id`,
           )
           .bind(p.name, p.partyType, p.phone, p.email, p.gstin, p.address, p.city, p.stateCode, p.pincode,
-            p.openingBalancePaise, p.isActive ? 1 : 0, now),
+            p.openingBalancePaise, p.isActive ? 1 : 0, now, p.creditLimitPaise, p.creditDays),
         audit(c, "party.created", { name: p.name, openingBalancePaise: p.openingBalancePaise }),
       ]);
       const id = (insert?.results[0] as { id: number }).id;
@@ -484,11 +492,12 @@ masterRoutes
         db
           .prepare(
             `UPDATE parties SET name = ?1, party_type = ?2, phone = ?3, email = ?4, gstin = ?5, address = ?6, city = ?7,
-               state_code = ?8, pincode = ?9, opening_balance_paise = ?10, is_active = ?11, updated_at = ?12
+               state_code = ?8, pincode = ?9, opening_balance_paise = ?10, is_active = ?11, updated_at = ?12,
+               credit_limit_paise = ?15, credit_days = ?16
              WHERE id = ?13 AND updated_at = ?14`,
           )
           .bind(p.name, p.partyType, p.phone, p.email, p.gstin, p.address, p.city, p.stateCode, p.pincode,
-            p.openingBalancePaise, p.isActive ? 1 : 0, stamp, id, p.updatedAt),
+            p.openingBalancePaise, p.isActive ? 1 : 0, stamp, id, p.updatedAt, p.creditLimitPaise, p.creditDays),
         auditIfChanged(c, "party.updated", { id, changes: diff(current as never, p as never) }),
         guard(db, `(SELECT ${openingFits} FROM parties p WHERE p.id = ?1)`, id),
         clearGuards(db),

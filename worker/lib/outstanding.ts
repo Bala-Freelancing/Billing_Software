@@ -25,6 +25,11 @@ export const openingOutstandingSql = (kind: VoucherKind, p = "p") =>
     ? `(MAX(${p}.opening_balance_paise, 0) - ${allocated("opening", `${p}.id`, "receipt")})`
     : `(MAX(-${p}.opening_balance_paise, 0) - ${allocated("opening", `${p}.id`, "payment")})`;
 
+/** A party's running balance: opening + posted journal (debit − credit). Positive = owes the shop. */
+export const partyBalanceSql = (p = "p") =>
+  `(${p}.opening_balance_paise + COALESCE((SELECT SUM(jl.debit_paise - jl.credit_paise) FROM journal_lines jl
+     JOIN journal_entries e ON e.id = jl.entry_id WHERE jl.party_id = ${p}.id AND e.status = 'posted'), 0))`;
+
 /** IST calendar date of a millisecond timestamp column. */
 const istDate = (col: string) => `date(${col} / 1000, 'unixepoch', '+330 minutes')`;
 
