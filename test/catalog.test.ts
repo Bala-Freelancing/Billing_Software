@@ -43,6 +43,9 @@ describe("product groups", () => {
     expect(renamed.productCount).toBe(1);
     expect((await json<Product>(await get(`/api/products/${p.id}`))).category).toBe("Fans – Ceiling");
     expect(await errorCode(await put(`/api/product-groups/${g.id}`, { name: "X", isActive: true, updatedAt: g.updatedAt }))).toBe("CONFLICT");
+    // The product list filters by group.
+    const inGroup = await json<{ items: Product[] }>(await get(`/api/products?group=${encodeURIComponent("Fans – Ceiling")}`));
+    expect(inGroup.items.map((x) => x.id)).toEqual([p.id]);
   });
 
   it("hides inactive groups from new products but keeps them on existing ones", async () => {

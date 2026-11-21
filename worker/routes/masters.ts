@@ -78,6 +78,7 @@ interface ProductRow {
   tracks_serial: number;
   is_active: number;
   in_stock: number;
+  avg_cost: number;
   updated_at: number;
 }
 
@@ -87,7 +88,13 @@ const PRODUCT_SELECT = `
          CASE WHEN p.tracks_serial = 1
            THEN (SELECT COUNT(*) FROM product_units u WHERE u.product_id = p.id AND u.status = 'in_stock')
            ELSE (SELECT COALESCE(SUM(m.qty_delta), 0) FROM stock_movements m WHERE m.product_id = p.id AND m.is_void = 0)
-         END AS in_stock
+         END AS in_stock,
+         -- Weighted average purchase cost excl. GST, valued the same way as lib/stock.ts.
+         (SELECT COALESCE(CAST(ROUND(SUM(v) * 1.0 / SUM(n)) AS INTEGER), 0) FROM (
+            SELECT quantity * rate_paise AS v, quantity AS n FROM opening_stock WHERE product_id = p.id AND status = 'posted'
+            UNION ALL
+            SELECT i.taxable_paise, i.quantity FROM purchase_items i JOIN purchases pu ON pu.id = i.purchase_id
+             WHERE i.product_id = p.id AND pu.status = 'posted')) AS avg_cost
     FROM products p
     JOIN gst_slabs g ON g.id = p.gst_slab_id`;
 
@@ -106,6 +113,7 @@ const toProduct = (r: ProductRow): Product => ({
   tracksSerial: r.tracks_serial === 1,
   isActive: r.is_active === 1,
   inStock: r.in_stock,
+  averageCostPaise: r.avg_cost,
   updatedAt: r.updated_at,
 });
 
@@ -299,12 +307,16 @@ masterRoutes
 
   // Products
   .get("/products", validate("query", listQuerySchema), async (c) => {
-    const { q, status, page } = c.req.valid("query");
+    const { q, status, group, page } = c.req.valid("query");
     const where: string[] = [];
     const binds: unknown[] = [];
     if (status !== "all") {
       where.push(`p.is_active = ?${binds.length + 1}`);
       binds.push(status === "active" ? 1 : 0);
+    }
+    if (group) {
+      where.push(`p.category = ?${binds.length + 1}`);
+      binds.push(group);
     }
     if (q) {
       const n = binds.length + 1;

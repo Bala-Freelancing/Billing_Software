@@ -167,6 +167,8 @@ export interface Product {
   tracksSerial: boolean;
   isActive: boolean;
   inStock: number;
+  /** Weighted average purchase cost excl. GST (0 before the first purchase). */
+  averageCostPaise: number;
   updatedAt: number;
 }
 
@@ -221,6 +223,8 @@ export const listQuerySchema = z.object({
   q: z.string().trim().max(100).optional().default(""),
   status: z.enum(["active", "inactive", "all"]).optional().default("active"),
   type: z.enum(PARTY_TYPES).optional(),
+  /** Products only: product group name. */
+  group: z.string().trim().max(60).optional().default(""),
   page: z.coerce.number().int().min(1).max(10_000).optional().default(1),
 });
 

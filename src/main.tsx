@@ -19,7 +19,6 @@ import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { PartiesPage } from "./pages/parties/PartiesPage";
 import { PartyFormPage } from "./pages/parties/PartyFormPage";
-import { ProductFormPage } from "./pages/products/ProductFormPage";
 import { ProductsPage } from "./pages/products/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { OpeningStockPage } from "./pages/purchases/OpeningStockPage";
@@ -49,8 +48,8 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <HomePage /> },
               { path: "/products", element: <ProductsPage /> },
-              { path: "/products/new", element: <ProductFormPage key="new" /> },
-              { path: "/products/:id", element: <ProductFormPage /> },
+              { path: "/products/new", element: <ProductsPage /> },
+              { path: "/products/:id", element: <ProductsPage /> },
               { path: "/parties", element: <PartiesPage /> },
               { path: "/parties/new", element: <PartyFormPage key="new" /> },
               { path: "/parties/:id", element: <PartyFormPage /> },

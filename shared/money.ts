@@ -50,4 +50,10 @@ export function splitInclusive(inclusivePaise: number, rateBp: number): { taxabl
   return { taxablePaise, taxPaise: inclusivePaise - taxablePaise };
 }
 
+/** Margin on cost in %: (selling price excl. GST − cost) / cost. Null when there is no cost yet. */
+export function marginOnCost(sellingInclPaise: number, rateBp: number, costPaise: number): number | null {
+  if (costPaise <= 0) return null;
+  return ((splitInclusive(sellingInclPaise, rateBp).taxablePaise - costPaise) / costPaise) * 100;
+}
+
 export const formatRate = (rateBp: number) => `${rateBp / 100}%`;

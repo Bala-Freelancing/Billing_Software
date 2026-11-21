@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPaise, paiseToInput, parseRupees, parseSignedRupees, splitInclusive } from "../shared/money";
+import { formatPaise, marginOnCost, paiseToInput, parseRupees, parseSignedRupees, splitInclusive } from "../shared/money";
 
 describe("money", () => {
   it("parses rupee strings into exact paise", () => {
@@ -9,6 +9,12 @@ describe("money", () => {
     expect(parseRupees("0.29")).toBe(29); // no float drift (0.29 * 100 = 28.999…)
     for (const bad of ["", "abc", "1.234", "-5", "1e3", "12.3.4"]) expect(parseRupees(bad)).toBeNull();
     expect(parseSignedRupees("-2500")).toBe(-250000);
+  });
+
+  it("works out margin on cost from a GST-inclusive selling price", () => {
+    // ₹1,180 incl. 18% GST = ₹1,000 taxable; cost ₹800 → 25%.
+    expect(marginOnCost(118000, 1800, 80000)).toBe(25);
+    expect(marginOnCost(118000, 1800, 0)).toBeNull();
   });
 
   it("formats with Indian grouping and round-trips through the input format", () => {

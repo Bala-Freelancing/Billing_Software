@@ -123,6 +123,8 @@ describe("purchase entry", () => {
     expect(p.items[0]?.units.map((u) => u.serial)).toEqual(body.lines[0]?.serials);
     expect(await stock(fan.id)).toBe(fanBefore + 2);
     expect(await stock(wire.id)).toBe(wireBefore + 3);
+    // Average purchase cost (excl. GST) shown on the product list.
+    expect(((await (await get(`/api/products/${fan.id}`)).json()) as Product).averageCostPaise).toBe(300000);
 
     const dr = p.journal.reduce((a, l) => a + l.debitPaise, 0);
     const cr = p.journal.reduce((a, l) => a + l.creditPaise, 0);
