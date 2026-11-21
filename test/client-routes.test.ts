@@ -61,3 +61,13 @@ describe("client API paths", () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe("side menu", () => {
+  it("every menu link is a page route", async () => {
+    const { NAV } = await import("../src/lib/nav");
+    const main = readFileSync(path.resolve(__dirname, "../src/main.tsx"), "utf8");
+    const routes = new Set([...main.matchAll(/path: "([^"]+)"/g)].map((m) => m[1]));
+    const missing = NAV.flatMap((g) => g.items.map((i) => i.to)).filter((to) => !routes.has(to));
+    expect(missing).toEqual([]);
+  });
+});
