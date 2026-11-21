@@ -22,7 +22,7 @@ const QUICK_ACTIONS = [
   { label: "New sale", to: "/sales/new", hint: "Scan serials to bill a retailer or walk-in" },
   { label: "New receipt", to: "/receipts/new", hint: "Money received against bills" },
   { label: "New purchase", to: "/purchases/new", hint: "Receive Havells stock by scanning serials" },
-  { label: "New voucher", to: "/expenses/new", hint: "Rent, salary, electricity…" },
+  { label: "Add retailer", to: "/parties/new", hint: "A new shop that buys from you" },
 ];
 
 export function HomePage() {
@@ -40,17 +40,12 @@ export function HomePage() {
       </div>
 
       {error && <Alert tone="error">{error}</Alert>}
-      {data && data.draftVouchers > 0 && (
-        <Alert tone="info">
-          {data.draftVouchers} voucher(s) waiting for approval. <Link className="font-medium underline" to="/expenses/approval">Review</Link>
-        </Alert>
-      )}
 
       <div className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Sales today" value={rupees(data?.salesToday.totalPaise)} note={data ? `${data.salesToday.count} invoice(s)` : undefined} to="/reports/sales" />
-        <Metric label="This month" value={rupees(data?.salesMonth.totalPaise)} note={data ? `${data.salesMonth.count} invoice(s), net of returns` : undefined} to="/stats" />
+        <Metric label="This month" value={rupees(data?.salesMonth.totalPaise)} note={data ? `${data.salesMonth.count} invoice(s), net of returns` : undefined} to="/reports/sales" />
         <Metric label="Collected today" value={rupees(data?.collectedTodayPaise)} note="Cash bills + receipts" to="/receipts" />
-        <Metric label="Cash · Bank" value={data ? `₹${formatPaise(data.cashPaise)}` : "—"} note={data ? `Bank ₹${formatPaise(data.bankPaise)}` : undefined} to="/reports/ledger" />
+        <Metric label="Cash · Bank" value={data ? `₹${formatPaise(data.cashPaise)}` : "—"} note={data ? `Bank ₹${formatPaise(data.bankPaise)}` : undefined} to="/receipts" />
         <Metric label="Receivables" value={rupees(data?.receivablePaise)} note={data?.overdue.amountPaise ? `₹${formatPaise(data.overdue.amountPaise)} overdue · ${data.overdue.parties} part(ies)` : "Nothing overdue"} to="/outstanding" />
         <Metric label="Payables" value={rupees(data?.payablePaise)} note="Owed to suppliers" to="/outstanding" />
         <Metric label="Stock value" value={rupees(data?.stockValuePaise)} note="At average cost (excl. GST)" to="/stock" />
@@ -61,9 +56,9 @@ export function HomePage() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold">Sales, last 6 months</h2>
-            <Link to="/stats" className="text-xs font-semibold text-slate-600 hover:text-slate-900">Statistics →</Link>
+            <Link to="/reports/sales" className="text-xs font-semibold text-[var(--erp-blue)] hover:underline">Sales report →</Link>
           </div>
-          {data && <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-slate-800", values: data.trend.map((t) => t.salesPaise) }]} />}
+          {data && <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-[var(--erp-blue)]", values: data.trend.map((t) => t.salesPaise) }]} />}
         </Card>
         <Card className="p-5">
           <h2 className="mb-3 text-sm font-semibold">Recent invoices</h2>

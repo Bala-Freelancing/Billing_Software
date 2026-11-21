@@ -21,3 +21,7 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+# Local browser-automation artefacts
+.playwright/
+.playwright-cli/

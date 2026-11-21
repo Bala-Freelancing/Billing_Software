@@ -11,11 +11,11 @@ export function SalesReturnsPage() {
   const { data, error, loading } = useFetch<{ items: SalesReturnSummary[] }>("/sales-returns");
   return (
     <div>
-      <PageHeader title="Sales returns" subtitle='Credit notes. To return items, open the invoice and choose "Sales return".' />
+      <PageHeader title="Credit Notes" subtitle='Sales returns. To return items, open the invoice and choose "Sales return".' />
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Credit note</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Against invoice</th><th className="px-4 py-3 text-right">Amount ₹</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -81,7 +81,7 @@ function ReturnForm({ sale: s }: { sale: SaleDetail }) {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Sales return" subtitle={<Link to={`/sales/${s.id}`} className="text-slate-600 hover:underline">← {s.invoiceNo} · {s.bill.name} · {formatDate(s.invoiceDate)}</Link>} />
+      <PageHeader title="New credit note" subtitle={<Link to={`/sales/${s.id}`} className="text-slate-600 hover:underline">← {s.invoiceNo} · {s.bill.name} · {formatDate(s.invoiceDate)}</Link>} />
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {error && <Alert tone="error">{error}</Alert>}
         <Card className="grid gap-5 sm:grid-cols-2">

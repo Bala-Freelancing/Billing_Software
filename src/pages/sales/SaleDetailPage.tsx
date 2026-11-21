@@ -24,7 +24,7 @@ export function SaleDetailPage() {
           <>
             {s.status === "cancelled" ? <Badge tone="red">Cancelled</Badge> : s.collectionType === "credit" ? <Badge tone="amber">Credit</Badge> : <Badge tone="green">Paid</Badge>}
             <Link to={`/sales/${s.id}/print`} target="_blank"><Button>Print invoice</Button></Link>
-            {canReturn && <Link to={`/sales-returns/new?sale=${s.id}`}><Button variant="secondary">Sales return</Button></Link>}
+            {canReturn && <Link to={`/sales-returns/new?sale=${s.id}`}><Button variant="secondary">Credit note (return)</Button></Link>}
           </>
         }
       />
@@ -37,9 +37,9 @@ export function SaleDetailPage() {
         <Info label="Net amount" value={`₹${formatPaise(s.totalPaise)}`} sub={s.salesman ? `Sales man: ${s.salesman}` : undefined} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Item</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3 text-right">Rate ₹</th><th className="px-4 py-3 text-right">GST</th><th className="px-4 py-3 text-right">Taxable ₹</th><th className="px-4 py-3 text-right">Amount ₹</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100 align-top">
@@ -64,8 +64,8 @@ export function SaleDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <h2 className="mb-3 font-semibold text-slate-900">Accounting entry</h2>
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="pb-2">Account</th><th className="pb-2 text-right">Debit ₹</th><th className="pb-2 text-right">Credit ₹</th></tr></thead>
+          <table className="erp-table w-full text-sm">
+            <thead className="erp-thead text-left"><tr><th className="pb-2">Account</th><th className="pb-2 text-right">Debit ₹</th><th className="pb-2 text-right">Credit ₹</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
               {s.journal.map((j, idx) => (
                 <tr key={idx}><td className="py-1.5">{j.account}</td><td className="py-1.5 text-right tabular-nums">{j.debitPaise ? formatPaise(j.debitPaise) : ""}</td><td className="py-1.5 text-right tabular-nums">{j.creditPaise ? formatPaise(j.creditPaise) : ""}</td></tr>

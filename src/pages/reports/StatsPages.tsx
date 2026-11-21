@@ -60,7 +60,7 @@ export function SalesStatsPage() {
             <BarChart
               labels={data.months.map((m) => monthLabel(m.month))}
               series={[
-                { name: "Sales", className: "fill-slate-800", values: data.months.map((m) => m.salesPaise) },
+                { name: "Sales", className: "fill-[var(--erp-blue)]", values: data.months.map((m) => m.salesPaise) },
                 { name: "Purchases", className: "fill-slate-300", values: data.months.map((m) => m.purchasesPaise) },
               ]}
             />
@@ -101,9 +101,9 @@ export function StockReportPage() {
       {error && <Alert tone="error">{error}</Alert>}
       {loading && !data && <Spinner />}
       {data && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <div className="erp-table-wrap">
+          <table className="erp-table min-w-full text-sm">
+            <thead className="erp-thead text-left">
               <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3">Group</th><th className="px-4 py-3 text-right">In stock</th><th className="px-4 py-3 text-right">Avg cost ₹</th><th className="px-4 py-3 text-right">Value ₹</th><th className="px-4 py-3 text-right">At selling price ₹</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

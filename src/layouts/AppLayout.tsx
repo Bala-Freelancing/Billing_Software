@@ -1,99 +1,89 @@
-import { useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { useAuth } from "../auth/useAuth";
-import { Button } from "../components/ui";
+import { groupFor, NAV } from "../lib/nav";
 
-interface NavItem {
-  label: string;
-  to?: string; // undefined = planned, shown as "Soon"
+const ICONS: Record<string, React.ReactNode> = {
+  Dashboard: <path d="M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10" />,
+  Sales: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />,
+  Purchase: <path d="M3 4h2l2 11h11l2-8H7M9 20h.01M17 20h.01" />,
+  Credit: <path d="M4 7h16v12H4zM4 11h16M8 15h3" />,
+  Reports: <path d="M5 20V10M12 20V4M19 20v-7" />,
+  Master: <path d="M4 6h16M4 12h16M4 18h10" />,
+};
+
+function Icon({ name }: { name: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {ICONS[name]}
+    </svg>
+  );
 }
 
-// Same grouping as the shop's previous billing software, so nothing has to be relearned.
-const NAV: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Transaction",
-    items: [
-      { label: "Sales", to: "/sales" },
-      { label: "Purchase", to: "/purchases" },
-      { label: "Sales Return", to: "/sales-returns" },
-      { label: "Purchase Return", to: "/purchase-returns" },
-      { label: "Receipt", to: "/receipts" },
-      { label: "Payment", to: "/payments" },
-      { label: "Outstanding", to: "/outstanding" },
-      { label: "Voucher", to: "/expenses" },
-      { label: "Voucher Approval", to: "/expenses/approval" },
-    ],
-  },
-  {
-    title: "Reports",
-    items: [
-      { label: "Sales Report", to: "/reports/sales" },
-      { label: "Purchase Report", to: "/reports/purchases" },
-      { label: "Receipt / Payment", to: "/receipts" },
-      { label: "Ledger Report", to: "/reports/ledger" },
-      { label: "Product / Stock Report", to: "/stock" },
-      { label: "Sales Statistics", to: "/stats" },
-      { label: "GST Slab PDF", to: "/reports/gst" },
-    ],
-  },
-  {
-    title: "Financial Report",
-    items: [{ label: "Statement of Account", to: "/statement" }, { label: "Trial Balance", to: "/trial-balance" }, { label: "Profit & Loss", to: "/profit-loss" }, { label: "Balance Sheet", to: "/balance-sheet" }],
-  },
-  {
-    title: "Master",
-    items: [
-      { label: "Parties (Ledger)", to: "/parties" },
-      { label: "Products", to: "/products" },
-      { label: "Product Opening Stock", to: "/opening-stock" },
-      { label: "Ledgers", to: "/ledgers" },
-      { label: "Ledger Group", to: "/ledger-groups" },
-      { label: "Product Group", to: "/product-groups" },
-      { label: "Product Unit", to: "/units" },
-      { label: "Settings & GST", to: "/settings" },
-    ],
-  },
-];
-
-const itemClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center rounded-md px-3 py-1.5 ${isActive ? "bg-slate-900 font-medium text-white" : "text-slate-700 hover:bg-slate-100"}`;
-
-function SideNav({ onNavigate }: { onNavigate?: () => void }) {
+/** One menu on the top bar: opens on click (and hover on desktop), closes on outside click or Escape. */
+function Menu({ title, open, onOpen, onClose }: { title: string; open: boolean; onOpen: () => void; onClose: () => void }) {
+  const group = NAV.find((g) => g.title === title)!;
+  const { pathname } = useLocation();
+  const active = groupFor(pathname)?.title === title;
   return (
-    <nav className="space-y-6 text-sm" aria-label="Main">
-      <NavLink to="/" end onClick={onNavigate} className={itemClass}>
-        Dashboard
-      </NavLink>
-      {NAV.map((group) => (
-        <div key={group.title}>
-          <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.title}</p>
-          <ul className="space-y-0.5">
-            {group.items.map((item) => (
-              <li key={item.label}>
-                {item.to ? (
-                  <NavLink to={item.to} onClick={onNavigate} className={itemClass}>
-                    {item.label}
-                  </NavLink>
-                ) : (
-                  <span className="flex items-center justify-between rounded-md px-3 py-1.5 text-slate-400" aria-disabled="true">
-                    {item.label}
-                    <span className="rounded border border-slate-200 px-1.5 text-[10px] font-medium uppercase tracking-wide">Soon</span>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+    <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
+      <button
+        type="button"
+        onClick={() => (open ? onClose() : onOpen())}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`erp-topnav-item ${active ? "erp-topnav-item-active" : ""}`}
+      >
+        <Icon name={title} />
+        {title}
+        <svg viewBox="0 0 20 20" className="h-3 w-3 opacity-80" fill="currentColor" aria-hidden="true"><path d="M5 7l5 6 5-6z" /></svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute left-0 top-full z-40 min-w-56 overflow-hidden rounded-b-md bg-white py-1 shadow-lg ring-1 ring-black/10">
+          {group.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              
+              role="menuitem"
+              onClick={onClose}
+              className={({ isActive }) => `block px-4 py-2 text-sm ${isActive ? "bg-[var(--erp-blue)] font-medium text-white" : "text-slate-700 hover:bg-[var(--erp-row-hover)] hover:text-[var(--erp-blue-dark)]"}`}
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </div>
-      ))}
-    </nav>
+      )}
+    </div>
   );
 }
 
 export function AppLayout() {
   const { state, logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const barRef = useRef<HTMLElement>(null);
   const user = state.status === "authenticated" ? state.user : null;
+
+  // Close menus on navigation, outside click and Escape.
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (barRef.current && !barRef.current.contains(e.target as Node)) setOpenMenu(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenMenu(null);
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   async function handleLogout() {
     setSigningOut(true);
@@ -101,65 +91,67 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf9]">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-6">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--erp-page)]">
+      <header ref={barRef} className="erp-topbar sticky top-0 z-30 print:hidden">
+        <div className="flex h-11 items-center justify-between gap-2 px-2 sm:px-4">
+          <div className="flex items-center">
             <button
               type="button"
-              className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
+              className="erp-topnav-item lg:hidden"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+                {mobileOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
               </svg>
+              Menu
             </button>
-            <NavLink to="/" className="flex items-center gap-2.5 font-semibold tracking-tight text-slate-900">
-              <img src="/favicon.svg" alt="" className="h-7 w-7" />
-              <span className="hidden sm:inline">Sri Vishnu Communication</span>
-            </NavLink>
-          </div>
-          <div className="flex items-center gap-2">
-            <NavLink
-              to="/account"
-              className={({ isActive }) =>
-                `hidden rounded-md px-3 py-2 text-sm sm:block ${isActive ? "bg-slate-100 font-medium text-slate-900" : "text-slate-600 hover:bg-slate-100"}`
-              }
-            >
-              {user?.displayName ?? "Account"}
-            </NavLink>
-            <Button variant="secondary" onClick={handleLogout} loading={signingOut}>
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white px-3 py-5 lg:block">
-          <SideNav />
-        </aside>
-
-        {menuOpen && (
-          <div className="fixed inset-0 top-14 z-20 lg:hidden">
-            <div className="absolute inset-0 bg-slate-900/20" onClick={() => setMenuOpen(false)} />
-            <aside className="relative h-full w-72 overflow-y-auto border-r border-slate-200 bg-white px-3 py-5 shadow-xl">
-              <SideNav onNavigate={() => setMenuOpen(false)} />
-              <NavLink to="/account" onClick={() => setMenuOpen(false)} className="mt-6 block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                Account
+            <nav className="hidden items-center lg:flex" aria-label="Main">
+              <NavLink to="/" end className={({ isActive }) => `erp-topnav-item ${isActive ? "erp-topnav-item-active" : ""}`}>
+                <Icon name="Dashboard" />
+                Dashboard
               </NavLink>
-            </aside>
+              {NAV.map((g) => (
+                <Menu key={g.title} title={g.title} open={openMenu === g.title} onOpen={() => setOpenMenu(g.title)} onClose={() => setOpenMenu((m) => (m === g.title ? null : m))} />
+              ))}
+              <NavLink to="/account" className={({ isActive }) => `erp-topnav-item ${isActive ? "erp-topnav-item-active" : ""}`}>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>
+                {user?.displayName ?? "Account"}
+              </NavLink>
+              <button type="button" onClick={handleLogout} disabled={signingOut} className="erp-topnav-item">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" /></svg>
+                {signingOut ? "Signing out…" : "Sign out"}
+              </button>
+            </nav>
+          </div>
+          <NavLink to="/" className="truncate text-sm font-bold uppercase tracking-wide text-white sm:text-base">
+            Sri Vishnu Communication
+          </NavLink>
+        </div>
+
+        {mobileOpen && (
+          <div className="max-h-[calc(100vh-2.75rem)] overflow-y-auto bg-white pb-4 shadow-lg lg:hidden" onClick={(e) => (e.target as HTMLElement).closest("a") && setMobileOpen(false)}>
+            <NavLink to="/" end className="block px-4 py-2.5 text-sm font-semibold text-slate-800">Dashboard</NavLink>
+            {NAV.map((g) => (
+              <div key={g.title}>
+                <p className="bg-[var(--erp-blue)] px-4 py-1.5 text-xs font-bold uppercase text-white">{g.title}</p>
+                {g.items.map((item) => (
+                  <NavLink key={item.to} to={item.to}  className={({ isActive }) => `block px-6 py-2 text-sm ${isActive ? "font-semibold text-[var(--erp-blue)]" : "text-slate-700"}`}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+            <NavLink to="/account" className="block px-4 py-2.5 text-sm text-slate-700">Account</NavLink>
+            <button type="button" onClick={handleLogout} className="block px-4 py-2.5 text-sm font-semibold text-red-700">Sign out</button>
           </div>
         )}
+      </header>
 
-        <main className="min-w-0 flex-1 px-4 py-8 lg:px-10">
-          <div className="mx-auto max-w-6xl">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      <main className="mx-auto max-w-[1600px] px-3 py-4 sm:px-6">
+        <Outlet />
+      </main>
     </div>
   );
 }

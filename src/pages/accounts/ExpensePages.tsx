@@ -22,9 +22,9 @@ const StatusBadge = ({ s }: { s: ExpenseStatus }) => <Badge tone={STATUS_BADGE[s
 function ExpenseTable({ items, loading }: { items: ExpenseSummary[] | undefined; loading: boolean }) {
   const navigate = useNavigate();
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+    <div className="erp-table-wrap">
+      <table className="erp-table min-w-full text-sm">
+        <thead className="erp-thead text-left">
           <tr><th className="px-4 py-3">Voucher no.</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Expense heads</th><th className="px-4 py-3">Paid by</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Amount ₹</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -301,8 +301,8 @@ export function ExpenseDetailPage() {
         )}
       </Card>
       <Card className="p-5">
-        <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="py-1">Expense head</th><th className="py-1">Narration</th>{v.gstBill && <th className="py-1 text-right">GST</th>}<th className="py-1 text-right">Amount ₹</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -320,7 +320,7 @@ export function ExpenseDetailPage() {
       {v.journal.length > 0 && (
         <Card className="p-5">
           <h2 className="mb-3 text-sm font-semibold">Accounting entry</h2>
-          <table className="min-w-full text-sm">
+          <table className="erp-table min-w-full text-sm">
             <tbody>{v.journal.map((j, i) => <tr key={i}><td className="py-1">{j.account}</td><td className="py-1 text-right tabular-nums">{j.debitPaise ? `${formatPaise(j.debitPaise)} Dr` : ""}</td><td className="py-1 text-right tabular-nums">{j.creditPaise ? `${formatPaise(j.creditPaise)} Cr` : ""}</td></tr>)}</tbody>
           </table>
         </Card>

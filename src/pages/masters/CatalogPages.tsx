@@ -43,9 +43,9 @@ function MasterForm({ title, onSubmit, onClose, children }: { title: string; onS
 
 function Table({ head, children, loading }: { head: string[]; children: ReactNode; loading: boolean }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+    <div className="erp-table-wrap">
+      <table className="erp-table min-w-full text-sm">
+        <thead className="erp-thead text-left">
           <tr>{head.map((h, i) => <th key={i} className="px-4 py-3">{h}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

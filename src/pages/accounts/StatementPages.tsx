@@ -60,9 +60,9 @@ export function StatementPage() {
             <h2 className="text-lg font-semibold">{data.party.name}</h2>
             <p className="text-sm text-slate-500">{[data.party.gstin, data.party.phone].filter(Boolean).join(" · ")} · {formatDate(data.from)} to {formatDate(data.to)}</p>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+          <div className="erp-table-wrap">
+            <table className="erp-table min-w-full text-sm">
+              <thead className="erp-thead text-left">
                 <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Doc no.</th><th className="px-4 py-3 text-right">Debit ₹</th><th className="px-4 py-3 text-right">Credit ₹</th><th className="px-4 py-3 text-right">Balance ₹</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -85,8 +85,8 @@ export function StatementPage() {
           <Ageing rows={data.ageing} />
           {data.outstanding.length > 0 && (
             <Card className="overflow-x-auto p-0">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <table className="erp-table min-w-full text-sm">
+                <thead className="erp-thead text-left">
                   <tr><th className="px-4 py-3">Bill</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Due</th><th className="px-4 py-3">Days pending</th><th className="px-4 py-3 text-right">Bill ₹</th><th className="px-4 py-3 text-right">Pending ₹</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -130,9 +130,9 @@ export function OutstandingPage() {
       </div>
       {error && <Alert tone="error">{error}</Alert>}
       {data && <Ageing rows={data.ageing} />}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Party</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Oldest bill</th><th className="px-4 py-3 text-right">Overdue ₹</th><th className="px-4 py-3 text-right">Balance ₹</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

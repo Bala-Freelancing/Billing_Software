@@ -193,7 +193,7 @@ function GstSlabsManager() {
 export function SettingsPage() {
   return (
     <div className="max-w-3xl space-y-8">
-      <PageHeader title="Settings" subtitle="Shop details appear on every invoice." />
+      <PageHeader title="Shop Profile" subtitle="Shop details appear on every invoice." />
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Shop details</h2>
         <ShopSettingsSection />
