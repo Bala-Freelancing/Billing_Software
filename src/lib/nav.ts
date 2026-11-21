@@ -1,5 +1,4 @@
-// The app's menu, grouped the same way as the shop's previous billing software
-// so nothing has to be relearned. Used by the top menu bar and the breadcrumb.
+// The app's side menu. Used by the sidebar and the breadcrumb.
 
 export interface NavItem {
   label: string;
@@ -8,6 +7,8 @@ export interface NavItem {
 
 export interface NavGroup {
   title: string;
+  /** SVG path data for the group's icon (24×24, stroke). */
+  icon: string;
   items: NavItem[];
 }
 
@@ -17,44 +18,58 @@ export interface NavGroup {
 export const NAV: NavGroup[] = [
   {
     title: "Sales",
+    icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
     items: [
       { label: "Sales", to: "/sales" },
-      { label: "Credit Note (Sales Return)", to: "/sales-returns" },
+      { label: "Credit note (sales return)", to: "/sales-returns" },
     ],
   },
   {
     title: "Purchase",
+    icon: "M3 4h2l2.4 11h11.2L21 7H6.2M9 20h.01M18 20h.01",
     items: [
       { label: "Purchase", to: "/purchases" },
-      { label: "Purchase Return", to: "/purchase-returns" },
+      { label: "Purchase return", to: "/purchase-returns" },
     ],
   },
   {
-    title: "Credit",
+    title: "Payments & credit",
+    icon: "M3 6h18v13H3zM3 10h18M7 15h3",
     items: [
-      { label: "Credit / Outstanding", to: "/outstanding" },
+      { label: "Credit / outstanding", to: "/outstanding" },
       { label: "Receipt (money in)", to: "/receipts" },
       { label: "Payment (money out)", to: "/payments" },
-      { label: "Statement of Account", to: "/statement" },
+      { label: "Statement of account", to: "/statement" },
+    ],
+  },
+  {
+    title: "Expenses",
+    icon: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3",
+    items: [{ label: "Business expenses", to: "/expenses" }],
+  },
+  {
+    title: "Masters",
+    icon: "M4 6h16M4 12h16M4 18h10",
+    items: [
+      { label: "Retailers & suppliers", to: "/parties" },
+      { label: "Products", to: "/products" },
+      { label: "Opening stock", to: "/opening-stock" },
     ],
   },
   {
     title: "Reports",
+    icon: "M5 20V10M12 20V4M19 20v-7",
     items: [
-      { label: "Sales Report", to: "/reports/sales" },
-      { label: "Purchase Report", to: "/reports/purchases" },
-      { label: "Product / Stock Report", to: "/stock" },
-      { label: "GST Slab PDF", to: "/reports/gst" },
+      { label: "Sales report", to: "/reports/sales" },
+      { label: "Purchase report", to: "/reports/purchases" },
+      { label: "Product / stock report", to: "/stock" },
+      { label: "GST slab PDF", to: "/reports/gst" },
     ],
   },
   {
-    title: "Master",
-    items: [
-      { label: "Retailers & Suppliers", to: "/parties" },
-      { label: "Products", to: "/products" },
-      { label: "Opening Stock", to: "/opening-stock" },
-      { label: "Shop Profile", to: "/settings" },
-    ],
+    title: "Settings",
+    icon: "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4",
+    items: [{ label: "Shop profile", to: "/settings" }],
   },
 ];
 
