@@ -45,7 +45,7 @@ const TotalCells = ({ t, bold }: { t: Totals; bold?: boolean | undefined }) => (
   </>
 );
 const TH = ({ children, right }: { children: React.ReactNode; right?: boolean }) => <th className={`px-3 py-2.5 ${right ? "text-right" : ""}`}>{children}</th>;
-const theadClass = "bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600";
+const theadClass = "erp-thead text-left";
 
 export function RegisterPage({ kind }: { kind: Kind }) {
   const navigate = useNavigate();
@@ -69,8 +69,8 @@ export function RegisterPage({ kind }: { kind: Kind }) {
       {error && <Alert tone="error">{error}</Alert>}
       {loading && !data && <Spinner />}
       {data && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="erp-table-wrap">
+          <table className="erp-table min-w-full text-sm">
             <thead className={theadClass}>
               <tr><TH>Date</TH><TH>Doc no.</TH><TH>{kind === "sales" ? "Customer" : "Supplier"}</TH><TH>GSTIN</TH><TH right>Taxable</TH><TH right>CGST</TH><TH right>SGST</TH><TH right>IGST</TH><TH right>Total ₹</TH></tr>
             </thead>
@@ -150,8 +150,8 @@ export function GstReportPage() {
       {loading && !data && <Spinner />}
       {data && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <div className="erp-table-wrap">
+            <table className="erp-table min-w-full text-sm">
               <thead className={theadClass}><tr><TH>GST rate</TH><TH right>Taxable</TH><TH right>CGST</TH><TH right>SGST</TH><TH right>IGST</TH><TH right>Value incl. GST</TH><TH right>Returns (taxable)</TH></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.slabs.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-500">No bills in this period.</td></tr>}
@@ -171,8 +171,8 @@ export function GstReportPage() {
             </div>
           )}
           <h2 className="text-sm font-semibold">Bills ({data.rows.length}{data.truncated ? "+, first 5000 shown" : ""})</h2>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <div className="erp-table-wrap">
+            <table className="erp-table min-w-full text-sm">
               <thead className={theadClass}><tr><TH>Date</TH><TH>Doc no.</TH><TH>Party</TH><TH>GSTIN</TH><TH>Rate</TH><TH right>Taxable</TH><TH right>CGST</TH><TH right>SGST</TH><TH right>IGST</TH><TH right>Total</TH></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((r, i) => (
@@ -191,8 +191,8 @@ export function GstReportPage() {
           {data.hsn.length > 0 && (
             <>
               <h2 className="text-sm font-semibold">HSN summary</h2>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <div className="erp-table-wrap">
+                <table className="erp-table min-w-full text-sm">
                   <thead className={theadClass}><tr><TH>HSN</TH><TH>Rate</TH><TH right>Qty</TH><TH right>Taxable</TH><TH right>CGST</TH><TH right>SGST</TH><TH right>IGST</TH><TH right>Total</TH></tr></thead>
                   <tbody className="divide-y divide-slate-100">
                     {data.hsn.map((h) => <tr key={`${h.hsnCode}-${h.rateBp}`}><td className="px-3 py-2 font-mono">{h.hsnCode}</td><td className="px-3 py-2">{formatRate(h.rateBp)}</td><td className="px-3 py-2 text-right tabular-nums">{h.quantity}</td><TotalCells t={h} /></tr>)}

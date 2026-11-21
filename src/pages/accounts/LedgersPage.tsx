@@ -111,9 +111,9 @@ export function LedgersPage() {
       {opening && <OpeningForm key={opening.id} ledger={opening} onDone={() => { setOpening(null); reload(); }} />}
       <TextField label="" aria-label="Search" placeholder="Search ledgers" value={q} onChange={(e) => setQ(e.target.value)} />
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Ledger</th><th className="px-4 py-3">Group</th><th className="px-4 py-3">Type</th><th className="px-4 py-3 text-right">Opening ₹</th><th className="px-4 py-3" /></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

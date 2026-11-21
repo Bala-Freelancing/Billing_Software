@@ -18,9 +18,9 @@ export function OpeningStockPage() {
       <PageHeader title="Opening stock" subtitle="Stock already in the shop before you started using this software." />
       <OpeningStockForm key={formKey} onSaved={() => { setFormKey((k) => k + 1); list.reload(); }} />
       {list.error && <Alert tone="error">{list.error}</Alert>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3 text-right">Cost ₹</th><th className="px-4 py-3">Serials</th><th className="px-4 py-3" /></tr>
           </thead>
           <tbody className="divide-y divide-slate-100 align-top">

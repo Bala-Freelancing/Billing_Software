@@ -32,9 +32,9 @@ export function TrialBalancePage() {
       {error && <Alert tone="error">{error}</Alert>}
       {loading && !data && <Spinner />}
       {data && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <div className="erp-table-wrap">
+          <table className="erp-table min-w-full text-sm">
+            <thead className="erp-thead text-left">
               <tr><th className="px-4 py-3">Account</th><th className="px-4 py-3">Group</th><th className="px-4 py-3 text-right">Debit ₹</th><th className="px-4 py-3 text-right">Credit ₹</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -188,9 +188,9 @@ export function LedgerReportPage() {
       {error && <Alert tone="error">{error}</Alert>}
       {id && loading && !data && <Spinner />}
       {data && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <div className="erp-table-wrap">
+          <table className="erp-table min-w-full text-sm">
+            <thead className="erp-thead text-left">
               <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Doc no.</th><th className="px-4 py-3">Narration</th><th className="px-4 py-3 text-right">Debit ₹</th><th className="px-4 py-3 text-right">Credit ₹</th><th className="px-4 py-3 text-right">Balance ₹</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

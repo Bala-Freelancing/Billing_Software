@@ -79,9 +79,9 @@ export function PurchaseDetailPage() {
         <Info label="Total" value={`₹${formatPaise(p.totalPaise)}`} sub={`Taxable ₹${formatPaise(p.taxablePaise)}`} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr>
               <th className="px-4 py-3">Item</th>
               <th className="px-4 py-3 text-right">Qty</th>
@@ -123,8 +123,8 @@ export function PurchaseDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <h2 className="mb-3 font-semibold text-slate-900">Accounting entry</h2>
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+          <table className="erp-table w-full text-sm">
+            <thead className="erp-thead text-left">
               <tr><th className="pb-2">Account</th><th className="pb-2 text-right">Debit ₹</th><th className="pb-2 text-right">Credit ₹</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

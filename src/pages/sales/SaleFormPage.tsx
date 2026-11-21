@@ -145,7 +145,7 @@ function SaleForm({ counter }: { counter: Party | null }) {
 
   return (
     <div>
-      <PageHeader title="New sale" subtitle={<Link to="/sales" className="text-slate-600 hover:underline">← All invoices</Link>} />
+      <PageHeader title="New sale" actions={<><Link to="/sales"><Button type="button" variant="secondary">All invoices</Button></Link><Link to="/parties/new"><Button type="button">Add retailer</Button></Link><Link to="/products/new"><Button type="button">Add new product</Button></Link><Link to="/reports/sales"><Button type="button">Report</Button></Link></>} />
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {formError && <Alert tone="error">{formError}</Alert>}
         <Card>
@@ -183,9 +183,10 @@ function SaleForm({ counter }: { counter: Party | null }) {
         </Card>
 
         <Card className="space-y-4">
+          <h2 className="text-center text-lg font-bold text-[var(--erp-blue)]">Bill items</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-1 text-sm font-medium text-slate-700">Scan to bill</p>
+              <p className="mb-1 text-[13px] text-slate-600">Scan to bill</p>
               <ScanInput onScan={handleScan} autoFocus placeholder="Scan the serial number on each unit" />
             </div>
             <SearchPicker<Product>
@@ -200,50 +201,79 @@ function SaleForm({ counter }: { counter: Party | null }) {
           {pickFor && <SerialPicker product={pickFor} exclude={lines.flatMap((l) => l.serials)} onPick={(s) => { addSerial(pickFor, s); setMessage({ tone: "success", text: `Added ${pickFor.name} · ${s}` }); }} onClose={() => setPickFor(null)} />}
           {errors.lines && <Alert tone="error">{errors.lines.join(" ")}</Alert>}
 
-          {lines.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">Scan the serial number on each unit to add it to the bill.</p>
-          ) : (
-            <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
-              {lines.map((l, i) => (
-                <div key={l.key} className="p-4">
-                  <div className="flex flex-wrap items-start gap-4">
-                    <div className="min-w-48 flex-1">
+          <div className="erp-table-wrap">
+            <table className="erp-table w-full min-w-[900px] text-sm">
+              <thead className="erp-thead">
+                <tr>
+                  <th className="w-10 px-2 text-center">#</th>
+                  <th className="px-3 text-left">Product</th>
+                  <th className="px-3 text-left">Serial no.</th>
+                  <th className="px-2 text-right">Stock</th>
+                  <th className="w-24 px-2 text-center">Quantity</th>
+                  <th className="px-2 text-center">Unit</th>
+                  <th className="w-32 px-2 text-center">Rate ₹ (incl. GST)</th>
+                  <th className="px-2 text-center">GST %</th>
+                  <th className="px-2 text-right">MRP ₹</th>
+                  <th className="px-3 text-right">Total ₹</th>
+                  <th className="w-10 px-2"><span className="sr-only">Remove</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.length === 0 && (
+                  <tr><td colSpan={11} className="px-3 py-8 text-center text-slate-500">Scan the serial number on each unit, or add a product by name, to start the bill.</td></tr>
+                )}
+                {lines.map((l, i) => (
+                  <tr key={l.key} className="align-top">
+                    <td className="px-2 text-center text-slate-500">{i + 1}</td>
+                    <td className="px-3">
                       <p className="font-medium text-slate-900">{l.product.brand} {l.product.name}</p>
-                      <p className="text-xs text-slate-500">HSN {l.product.hsnCode} · GST {formatRate(l.product.gstRateBp)} · MRP ₹{formatPaise(l.product.mrpPaise)} · Stock {l.product.inStock}</p>
-                    </div>
-                    <div className="w-24">
-                      {l.product.tracksSerial ? <div><p className="text-xs text-slate-500">Qty</p><p className="py-2 font-semibold tabular-nums">{l.serials.length}</p></div>
-                        : <TextField label="Qty" inputMode="numeric" value={l.quantity} onChange={(e) => updateLine(l.key, { quantity: e.target.value })} />}
-                    </div>
-                    <div className="w-36"><TextField label="Rate ₹ (incl. GST)" inputMode="decimal" value={l.rate} onChange={(e) => updateLine(l.key, { rate: e.target.value })} /></div>
-                    <div className="w-32 text-right"><p className="text-xs text-slate-500">Amount</p><p className="py-2 font-semibold tabular-nums">₹{formatPaise(preview.lines[i]?.totalPaise ?? 0)}</p></div>
-                    <button type="button" className="pt-6 text-sm text-red-700 hover:underline" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>Remove</button>
-                  </div>
-                  {l.serials.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {l.serials.map((s) => (
-                        <span key={s} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 font-mono text-xs">
-                          {s}
-                          <button type="button" aria-label={`Remove ${s}`} className="text-slate-400 hover:text-red-700" onClick={() => { const serials = l.serials.filter((x) => x !== s); if (serials.length) updateLine(l.key, { serials, quantity: String(serials.length) }); else setLines((ls) => ls.filter((x) => x.key !== l.key)); }}>×</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {errors[`line-${l.key}`] && <p className="mt-2 text-sm text-red-700">{errors[`line-${l.key}`]?.[0]}</p>}
-                </div>
-              ))}
-            </div>
-          )}
+                      <p className="text-xs text-slate-500">HSN {l.product.hsnCode}</p>
+                      {errors[`line-${l.key}`] && <p className="mt-1 text-xs text-red-700">{errors[`line-${l.key}`]?.[0]}</p>}
+                    </td>
+                    <td className="px-3">
+                      {l.serials.length > 0 ? (
+                        <div className="flex max-w-64 flex-wrap gap-1">
+                          {l.serials.map((s) => (
+                            <span key={s} className="inline-flex items-center gap-1 rounded bg-[var(--erp-row-hover)] px-1.5 py-0.5 text-xs font-medium text-[var(--erp-blue-dark)]">
+                              {s}
+                              <button type="button" aria-label={`Remove ${s}`} className="text-slate-500 hover:text-red-700" onClick={() => { const serials = l.serials.filter((x) => x !== s); if (serials.length) updateLine(l.key, { serials, quantity: String(serials.length) }); else setLines((ls) => ls.filter((x) => x.key !== l.key)); }}>×</button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="px-2 text-right tabular-nums text-slate-600">{l.product.inStock}</td>
+                    <td className="px-2">
+                      {l.product.tracksSerial ? <p className="text-center font-semibold tabular-nums">{l.serials.length}</p>
+                        : <input aria-label={`Quantity for ${l.product.name}`} inputMode="numeric" value={l.quantity} onChange={(e) => updateLine(l.key, { quantity: e.target.value })} className="w-full rounded border-0 px-2 py-1 text-right tabular-nums ring-1 ring-inset ring-[var(--erp-field-border)] focus:ring-2 focus:ring-[var(--erp-blue)]" />}
+                    </td>
+                    <td className="px-2 text-center text-slate-600">{l.product.unit}</td>
+                    <td className="px-2">
+                      <input aria-label={`Rate for ${l.product.name}`} inputMode="decimal" value={l.rate} onChange={(e) => updateLine(l.key, { rate: e.target.value })} className="w-full rounded border-0 px-2 py-1 text-right tabular-nums ring-1 ring-inset ring-[var(--erp-field-border)] focus:ring-2 focus:ring-[var(--erp-blue)]" />
+                    </td>
+                    <td className="px-2 text-center tabular-nums">{formatRate(l.product.gstRateBp)}</td>
+                    <td className="px-2 text-right tabular-nums text-slate-600">{formatPaise(l.product.mrpPaise)}</td>
+                    <td className="px-3 text-right font-semibold tabular-nums">{formatPaise(preview.lines[i]?.totalPaise ?? 0)}</td>
+                    <td className="px-2 text-center">
+                      <button type="button" aria-label={`Remove ${l.product.name}`} className="rounded p-1 text-red-600 hover:bg-red-50" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         <div className="grid gap-6 md:grid-cols-[1fr_20rem]">
           <Card><TextField label="Remarks (optional)" value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Card>
           <Card>
-            <dl className="space-y-1.5 text-sm">
-              <Row label="Taxable value" value={preview.taxablePaise} />
-              {interstate ? <Row label="IGST" value={preview.igstPaise} /> : <><Row label="CGST" value={preview.cgstPaise} /><Row label="SGST" value={preview.sgstPaise} /></>}
+            <dl className="divide-y divide-[var(--erp-panel-border)] text-sm">
+              <Row label="Taxable amount" value={preview.taxablePaise} />
+              {interstate ? <Row label="IGST amount" value={preview.igstPaise} /> : <><Row label="CGST amount" value={preview.cgstPaise} /><Row label="SGST amount" value={preview.sgstPaise} /></>}
               <Row label="Round off" value={preview.roundOffPaise} />
-              <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold"><dt>Net amount</dt><dd className="tabular-nums">₹{formatPaise(preview.totalPaise)}</dd></div>
+              <div className="flex justify-between bg-[var(--erp-row-hover)] px-2 py-2 text-base font-bold text-[var(--erp-blue-dark)]"><dt>Net amount</dt><dd className="tabular-nums">₹{formatPaise(preview.totalPaise)}</dd></div>
             </dl>
             <Button type="submit" className="mt-4 w-full" loading={saving}>Save invoice</Button>
           </Card>
@@ -272,5 +302,5 @@ function SerialPicker({ product, exclude, onPick, onClose }: { product: Product;
 }
 
 function Row({ label, value }: { label: string; value: number }) {
-  return <div className="flex justify-between text-slate-600"><dt>{label}</dt><dd className="tabular-nums text-slate-900">₹{formatPaise(value)}</dd></div>;
+  return <div className="flex justify-between px-2 py-1.5"><dt className="font-semibold text-slate-700">{label}</dt><dd className="tabular-nums text-slate-900">₹{formatPaise(value)}</dd></div>;
 }

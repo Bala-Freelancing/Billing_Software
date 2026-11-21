@@ -185,7 +185,8 @@ function ProductForm({
         <Card>
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField label="Brand" value={form.brand} onChange={(e) => set("brand", e.target.value)} errors={errors.brand} required />
-            <SelectField label="Product group" value={form.category} onChange={(e) => set("category", e.target.value)} errors={errors.category} hint={groups.length === 0 ? "Add groups under Master → Product Group" : undefined}>
+{groups.length > 0 && (
+            <SelectField label="Product group" value={form.category} onChange={(e) => set("category", e.target.value)} errors={errors.category}>
               <option value="">No group</option>
               {groups
                 .filter((g) => g.isActive || g.name === form.category)
@@ -196,6 +197,7 @@ function ProductForm({
                   </option>
                 ))}
             </SelectField>
+            )}
             <TextField
               className="sm:col-span-2"
               label="Product name / model"

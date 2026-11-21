@@ -48,9 +48,9 @@ export function VouchersPage({ kind }: { kind: VoucherKind }) {
         </SelectField>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr><th className="px-4 py-3">Voucher no.</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">{m.party}</th><th className="px-4 py-3">Mode</th><th className="px-4 py-3 text-right">Amount ₹</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -188,8 +188,8 @@ export function VoucherFormPage({ kind }: { kind: VoucherKind }) {
               <p className="text-sm text-slate-500">No pending bills. The amount will be kept as an advance.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <table className="erp-table min-w-full text-sm">
+                  <thead className="erp-thead text-left">
                     <tr><th className="py-2 pr-4">Bill</th><th className="py-2 pr-4">Date</th><th className="py-2 pr-4">Days</th><th className="py-2 pr-4 text-right">Due ₹</th><th className="py-2 text-right">Settle ₹</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -258,7 +258,7 @@ export function VoucherDetailPage({ kind }: { kind: VoucherKind }) {
       </Card>
       <Card className="p-5">
         <h2 className="mb-3 text-sm font-semibold">Settled bills</h2>
-        <table className="min-w-full text-sm">
+        <table className="erp-table min-w-full text-sm">
           <tbody className="divide-y divide-slate-100">
             {v.allocations.map((a) => (
               <tr key={keyOf(a)}>
@@ -272,8 +272,8 @@ export function VoucherDetailPage({ kind }: { kind: VoucherKind }) {
       </Card>
       <Card className="p-5">
         <h2 className="mb-3 text-sm font-semibold">Accounting entry</h2>
-        <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase text-slate-500"><tr><th className="py-1">Account</th><th className="py-1 text-right">Debit ₹</th><th className="py-1 text-right">Credit ₹</th></tr></thead>
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left"><tr><th className="py-1">Account</th><th className="py-1 text-right">Debit ₹</th><th className="py-1 text-right">Credit ₹</th></tr></thead>
           <tbody>{v.journal.map((j, i) => <tr key={i}><td className="py-1">{j.account}</td><td className="py-1 text-right tabular-nums">{j.debitPaise ? formatPaise(j.debitPaise) : ""}</td><td className="py-1 text-right tabular-nums">{j.creditPaise ? formatPaise(j.creditPaise) : ""}</td></tr>)}</tbody>
         </table>
       </Card>

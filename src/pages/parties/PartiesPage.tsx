@@ -21,7 +21,7 @@ export function PartiesPage() {
   return (
     <div>
       <PageHeader
-        title="Parties"
+        title="Retailers & Suppliers"
         subtitle="Retailers you sell to and suppliers you buy from."
         actions={
           <Link to="/parties/new">
@@ -43,9 +43,9 @@ export function PartiesPage() {
         </SelectField>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+      <div className="erp-table-wrap">
+        <table className="erp-table min-w-full text-sm">
+          <thead className="erp-thead text-left">
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">GSTIN</th>
