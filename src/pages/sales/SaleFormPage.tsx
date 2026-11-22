@@ -7,7 +7,7 @@ import { formatPaise, formatRate, paiseToInput, parseRupees } from "../../../sha
 import type { SaleDetail } from "../../../shared/sales";
 import { ScanInput } from "../../components/ScanInput";
 import { SearchPicker } from "../../components/SearchPicker";
-import { Alert, Button, Card, PageHeader, SelectField, Spinner, TextField } from "../../components/ui";
+import { Alert, Button, Card, HeaderLink, PageHeader, SelectField, Spinner, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 
@@ -54,8 +54,12 @@ function SaleForm({ counter }: { counter: Party | null }) {
   const stateCode = isCounter ? billStateCode : (customer?.stateCode ?? HOME_STATE_CODE);
   const interstate = shop.data ? stateCode !== shop.data.stateCode : false;
 
+  // Due date follows the party's credit days (30 when not set).
+  const dueFor = (date: string, p: Party | null) => plusDays(date, p?.creditDays || 30);
+
   function chooseCustomer(p: Party | null) {
     setCustomer(p);
+    setDueDate(dueFor(invoiceDate, p));
     if (p?.isCounter) setCollectionType("immediate");
   }
 
@@ -145,7 +149,7 @@ function SaleForm({ counter }: { counter: Party | null }) {
 
   return (
     <div>
-      <PageHeader title="New sale" actions={<><Link to="/sales"><Button type="button" variant="secondary">All invoices</Button></Link><Link to="/parties/new"><Button type="button">Add retailer</Button></Link><Link to="/products/new"><Button type="button">Add new product</Button></Link><Link to="/reports/sales"><Button type="button">Report</Button></Link></>} />
+      <PageHeader title="Sale entry" actions={<><HeaderLink to="/parties/new">+ New party</HeaderLink><HeaderLink to="/products/new">+ New product</HeaderLink><HeaderLink to="/sales">Sales list</HeaderLink><HeaderLink to="/reports/sales">Report</HeaderLink></>} />
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {formError && <Alert tone="error">{formError}</Alert>}
         <Card>
@@ -161,8 +165,19 @@ function SaleForm({ counter }: { counter: Party | null }) {
                 errors={errors.customerId}
               />
               {customer && <p className="mt-1 text-xs text-slate-500">{interstate ? "Other state: IGST" : "Same state: CGST + SGST"}</p>}
+              {customer && !isCounter && (
+                <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  <span className={customer.balancePaise > 0 ? "font-semibold text-amber-700" : "text-slate-600"}>
+                    {customer.balancePaise >= 0 ? `Balance ₹${formatPaise(customer.balancePaise)} to collect` : `We owe ₹${formatPaise(-customer.balancePaise)}`}
+                    {customer.creditLimitPaise > 0 && ` · limit ₹${formatPaise(customer.creditLimitPaise)}`}
+                    {customer.creditDays > 0 && ` · ${customer.creditDays} days`}
+                  </span>
+                  <Link to={`/statement?party=${customer.id}`} className="font-semibold text-[var(--erp-blue)] hover:underline">Statement of account</Link>
+                  <Link to={`/sales?q=${encodeURIComponent(customer.name)}`} className="font-semibold text-[var(--erp-blue)] hover:underline">Recent sales</Link>
+                </p>
+              )}
             </div>
-            <TextField label="Invoice date" type="date" max={todayIst()} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} errors={errors.invoiceDate} />
+            <TextField label="Invoice date" type="date" max={todayIst()} value={invoiceDate} onChange={(e) => { setInvoiceDate(e.target.value); setDueDate(dueFor(e.target.value, customer)); }} errors={errors.invoiceDate} />
             <TextField label="Sales man" value={salesman} onChange={(e) => setSalesman(e.target.value)} />
             <SelectField label="Collection type" value={collectionType} onChange={(e) => setCollectionType(e.target.value as "immediate" | "credit")} disabled={isCounter} errors={errors.collectionType}>
               <option value="immediate">Immediate (paid now)</option>
@@ -275,6 +290,13 @@ function SaleForm({ counter }: { counter: Party | null }) {
               <Row label="Round off" value={preview.roundOffPaise} />
               <div className="flex justify-between bg-[var(--erp-row-hover)] px-2 py-2 text-base font-bold text-[var(--erp-blue-dark)]"><dt>Net amount</dt><dd className="tabular-nums">₹{formatPaise(preview.totalPaise)}</dd></div>
             </dl>
+            {collectionType === "credit" && customer && customer.creditLimitPaise > 0 && customer.balancePaise + preview.totalPaise > customer.creditLimitPaise && (
+              <div className="mt-3">
+                <Alert tone="info">
+                  This bill takes {customer.name} to ₹{formatPaise(customer.balancePaise + preview.totalPaise)}, over their ₹{formatPaise(customer.creditLimitPaise)} credit limit.
+                </Alert>
+              </div>
+            )}
             <Button type="submit" className="mt-4 w-full" loading={saving}>Save invoice</Button>
           </Card>
         </div>

@@ -112,6 +112,18 @@ export const expenseListQuery = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional().default(1),
 });
 
+export const expenseSummaryQuery = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+/** Approved expenses in a period: the total (incl. GST) and the split by head (excl. GST). */
+export interface ExpenseSummaryReport {
+  totalPaise: number;
+  count: number;
+  byHead: { name: string; amountPaise: number }[];
+}
+
 /** Tax per line and voucher totals; used by the form preview and by the server. */
 export function computeExpense(lines: { amountPaise: number; gstRateBp: number }[], interstate: boolean) {
   const amounts = lines.map((l) => computeLine({ quantity: 1, ratePaise: l.amountPaise, gstRateBp: l.gstRateBp }, { ratesIncludeGst: false, interstate }));

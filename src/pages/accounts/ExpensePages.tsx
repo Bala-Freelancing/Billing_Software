@@ -2,11 +2,11 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { formatDate, todayIst } from "../../../shared/gst";
 import { HOME_STATE_CODE } from "../../../shared/india";
-import { computeExpense, type ExpenseDetail, type ExpenseStatus, type ExpenseSummary, type Ledger } from "../../../shared/ledgers";
+import { computeExpense, type ExpenseDetail, type ExpenseStatus, type ExpenseSummary, type ExpenseSummaryReport, type Ledger } from "../../../shared/ledgers";
 import type { GstSlab, ListResponse } from "../../../shared/masters";
 import { formatPaise, formatRate, parseRupees } from "../../../shared/money";
 import { MODE_LABEL, MODES, type PaymentMode } from "../../../shared/vouchers";
-import { Alert, Badge, Button, Card, CheckboxField, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
+import { Alert, Badge, Button, Card, CheckboxField, HeaderLink, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import { CancelBox } from "../purchases/PurchaseDetailPage";
@@ -46,14 +46,60 @@ function ExpenseTable({ items, loading }: { items: ExpenseSummary[] | undefined;
   );
 }
 
+/** Last day of a "YYYY-MM" month. */
+const monthEnd = (month: string) => {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+};
+
+/** Approved spend for one month, split by expense head. */
+function ExpenseMonthSummary() {
+  const [month, setMonth] = useState(todayIst().slice(0, 7));
+  const { data, error } = useFetch<ExpenseSummaryReport>(month ? `/expenses/summary?from=${month}-01&to=${monthEnd(month)}` : null);
+  const top = data?.byHead[0]?.amountPaise ?? 0;
+  return (
+    <Card>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-600">Spent (approved, incl. GST)</p>
+          <p className="text-3xl font-bold tabular-nums text-slate-900">{data ? `₹${formatPaise(data.totalPaise)}` : "—"}</p>
+          {data && <p className="text-sm text-slate-500">{data.count} voucher(s)</p>}
+        </div>
+        <TextField label="Month" type="month" max={todayIst().slice(0, 7)} value={month} onChange={(e) => setMonth(e.target.value)} />
+      </div>
+      {error && <Alert tone="error">{error}</Alert>}
+      {data && data.byHead.length > 0 && (
+        <div className="mt-4 space-y-2 text-sm">
+          <h2 className="font-semibold text-slate-900">Where the money went <span className="font-normal text-slate-500">(excl. GST)</span></h2>
+          {data.byHead.map((h) => (
+            <div key={h.name} className="grid grid-cols-[10rem_1fr_7rem] items-center gap-3">
+              <span className="truncate">{h.name}</span>
+              <div className="h-3 rounded-full bg-slate-100" aria-hidden="true">
+                <div className="h-3 rounded-full bg-[var(--erp-blue)]" style={{ width: `${Math.max(2, (h.amountPaise / top) * 100)}%` }} />
+              </div>
+              <span className="text-right font-semibold tabular-nums">₹{formatPaise(h.amountPaise)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {data && data.byHead.length === 0 && <p className="mt-3 text-sm text-slate-500">No approved expenses this month.</p>}
+    </Card>
+  );
+}
+
 export function ExpensesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const { data, error, loading } = useFetch<ListResponse<ExpenseSummary>>(`/expenses?${new URLSearchParams({ q, status, page: String(page) })}`);
   return (
-    <div>
-      <PageHeader title="Vouchers" subtitle="Shop expenses such as rent, salary and electricity. They count in the accounts once approved." actions={<Link to="/expenses/new"><Button>New voucher</Button></Link>} />
+    <div className="space-y-4">
+      <PageHeader
+        title="Business expenses"
+        subtitle="Courier, diesel, electricity, rent, salary and other shop costs. They count in the accounts once approved."
+        actions={<><HeaderLink to="/expenses/approval">Awaiting approval</HeaderLink><HeaderLink to="/ledgers">Expense heads</HeaderLink><Link to="/expenses/new"><Button>Add expense</Button></Link></>}
+      />
+      <ExpenseMonthSummary />
       <div className="mb-4 grid gap-3 md:grid-cols-[2fr_1fr]">
         <TextField label="" aria-label="Search" placeholder="Voucher no., head, narration or reference" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
         <SelectField label="" aria-label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>

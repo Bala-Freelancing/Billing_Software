@@ -67,3 +67,10 @@ export function gstinProblem(gstin: string): string | null {
   if (gstinCheckChar(gstin.slice(0, 14)) !== gstin[14]) return "GSTIN check digit is wrong — please re-check it";
   return null;
 }
+
+/** WhatsApp number (91 + 10 digits) for an Indian mobile, or null if it isn't one. */
+export function whatsAppNumber(phone: string): string | null {
+  const d = phone.replace(/\D/g, "").replace(/^0+/, "");
+  const ten = d.length === 12 && d.startsWith("91") ? d.slice(2) : d;
+  return /^[6-9]\d{9}$/.test(ten) ? `91${ten}` : null;
+}

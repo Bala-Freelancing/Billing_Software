@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 import type { ListResponse, Party } from "../../../shared/masters";
 import { formatPaise } from "../../../shared/money";
-import { Alert, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
+import { Alert, HeaderLink, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
 import { useFetch } from "../../lib/useFetch";
 import { PartyFormPanel } from "./PartyFormPanel";
 
@@ -31,12 +31,8 @@ export function PartiesPage() {
         title="Retailers & suppliers"
         actions={
           <>
-            <Link to="/outstanding" className="rounded-lg bg-[var(--erp-row-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--erp-blue)] hover:bg-blue-100">
-              Credit / outstanding
-            </Link>
-            <Link to="/statement" className="rounded-lg bg-[var(--erp-row-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--erp-blue)] hover:bg-blue-100">
-              Statement of account
-            </Link>
+            <HeaderLink to="/outstanding">Credit / outstanding</HeaderLink>
+            <HeaderLink to="/statement">Statement of account</HeaderLink>
           </>
         }
       />

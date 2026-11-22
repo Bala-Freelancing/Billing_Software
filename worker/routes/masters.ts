@@ -18,6 +18,8 @@ import {
   type ScanResult,
   type ShopSettings,
   type Unit,
+  type StorageInfo,
+  DB_LIMIT_BYTES,
 } from "../../shared/masters";
 import { conflict, diff, isUniqueViolation, likePattern, notFound } from "../lib/db";
 import { AppError } from "../lib/errors";
@@ -231,6 +233,12 @@ for (const path of ["/settings/*", "/gst-slabs", "/gst-slabs/*", "/products", "/
   masterRoutes.use(path, requireAuth);
 }
 masterRoutes
+
+  // Database size, so the owner sees the free plan's 500 MB limit coming.
+  .get("/settings/storage", async (c) => {
+    const { meta } = await c.env.DB.prepare("SELECT 1").run();
+    return c.json({ usedBytes: meta.size_after ?? 0, limitBytes: DB_LIMIT_BYTES } satisfies StorageInfo);
+  })
 
   // Shop settings
   .get("/settings/shop", async (c) => {

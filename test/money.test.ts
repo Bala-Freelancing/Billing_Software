@@ -36,3 +36,14 @@ describe("money", () => {
     }
   });
 });
+
+describe("WhatsApp numbers", () => {
+  it("accepts Indian mobiles in common formats and rejects landlines", async () => {
+    const { whatsAppNumber } = await import("../shared/india");
+    expect(whatsAppNumber("98422 12345")).toBe("919842212345");
+    expect(whatsAppNumber("+91-98422-12345")).toBe("919842212345");
+    expect(whatsAppNumber("09842212345")).toBe("919842212345");
+    expect(whatsAppNumber("0421 2234567")).toBeNull();
+    expect(whatsAppNumber("")).toBeNull();
+  });
+});

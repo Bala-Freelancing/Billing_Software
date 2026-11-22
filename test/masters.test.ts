@@ -77,7 +77,7 @@ function partyInput(overrides: Record<string, unknown> = {}) {
 
 describe("access", () => {
   it("requires sign-in for every master-data route but leaves login reachable", async () => {
-    for (const path of ["/api/settings/shop", "/api/gst-slabs", "/api/products", "/api/parties", "/api/scan/ABC"]) {
+    for (const path of ["/api/settings/shop", "/api/settings/storage", "/api/gst-slabs", "/api/products", "/api/parties", "/api/scan/ABC"]) {
       expect((await call(env, path)).status).toBe(401);
     }
     expect((await call(env, "/api/health")).status).toBe(200);
@@ -93,6 +93,14 @@ describe("GSTIN validation", () => {
     expect(gstinProblem(`99${TN_GSTIN.slice(2)}`)).not.toBeNull();
     const wrongCheck = TN_GSTIN.slice(0, 14) + (TN_GSTIN[14] === "A" ? "B" : "A");
     expect(gstinProblem(wrongCheck)).toMatch(/check digit/);
+  });
+});
+
+describe("storage", () => {
+  it("reports the database size against the free plan's 500 MB", async () => {
+    const s = (await (await get("/api/settings/storage")).json()) as { usedBytes: number; limitBytes: number };
+    expect(s.usedBytes).toBeGreaterThan(0);
+    expect(s.limitBytes).toBe(500_000_000);
   });
 });
 

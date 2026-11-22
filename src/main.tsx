@@ -18,6 +18,7 @@ import { NotFoundPage, RouteErrorPage } from "./pages/ErrorPages";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { PartiesPage } from "./pages/parties/PartiesPage";
+import { ReportsHubPage } from "./pages/reports/ReportsHubPage";
 import { ProductsPage } from "./pages/products/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { OpeningStockPage } from "./pages/purchases/OpeningStockPage";
@@ -72,6 +73,7 @@ const router = createBrowserRouter([
               { path: "/payments/:id", element: <VoucherDetailPage key="payment" kind="payment" /> },
               { path: "/statement", element: <StatementPage /> },
               { path: "/outstanding", element: <OutstandingPage /> },
+              { path: "/reports", element: <ReportsHubPage /> },
               { path: "/reports/sales", element: <RegisterPage key="sales" kind="sales" /> },
               { path: "/reports/purchases", element: <RegisterPage key="purchase" kind="purchase" /> },
               { path: "/reports/gst", element: <GstReportPage /> },

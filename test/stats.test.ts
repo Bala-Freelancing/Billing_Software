@@ -64,6 +64,9 @@ describe("dashboard overview", () => {
     // Stock: fans 4 − 2 + 1 = 3 × ₹1,000; switches 50 − 16 = 34 × ₹50.
     expect(o.stockValuePaise).toBe(300000 + 170000);
     expect(o.outOfStock).toBe(1);
+    // The dashboard's low-stock list: the same products the counts cover, emptiest first.
+    expect(o.lowStockItems).toHaveLength(o.lowStock + o.outOfStock);
+    expect(o.lowStockItems[0]?.inStock).toBe(0);
     expect(o.trend).toHaveLength(6);
     expect(o.trend.at(-1)?.salesPaise).toBe(413000);
     expect(o.recentSales).toHaveLength(3);

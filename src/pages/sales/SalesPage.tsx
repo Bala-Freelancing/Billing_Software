@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { formatDate } from "../../../shared/gst";
 import type { ListResponse } from "../../../shared/masters";
 import { formatPaise } from "../../../shared/money";
@@ -9,7 +9,8 @@ import { useFetch } from "../../lib/useFetch";
 
 export function SalesPage() {
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
+  const [search] = useSearchParams();
+  const [q, setQ] = useState(search.get("q") ?? ""); // ?q= from "Recent sales" on the sale screen
   const [status, setStatus] = useState("posted");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");

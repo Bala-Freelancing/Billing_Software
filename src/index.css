@@ -29,6 +29,8 @@ body {
 
   /* Tables */
   .erp-table-wrap {
+    /* relative: keeps sr-only header text inside the scroll box, or phones scroll sideways */
+    position: relative;
     overflow-x: auto;
     border: 1px solid var(--erp-panel-border);
     border-radius: 0.75rem;

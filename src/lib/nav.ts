@@ -28,7 +28,8 @@ export const NAV: NavGroup[] = [
     title: "Purchase",
     icon: "M3 4h2l2.4 11h11.2L21 7H6.2M9 20h.01M18 20h.01",
     items: [
-      { label: "Purchase", to: "/purchases" },
+      { label: "Purchase entry", to: "/purchases/new" },
+      { label: "Purchase bills", to: "/purchases" },
       { label: "Purchase return", to: "/purchase-returns" },
     ],
   },
@@ -60,6 +61,7 @@ export const NAV: NavGroup[] = [
     title: "Reports",
     icon: "M5 20V10M12 20V4M19 20v-7",
     items: [
+      { label: "All reports", to: "/reports" },
       { label: "Sales report", to: "/reports/sales" },
       { label: "Purchase report", to: "/reports/purchases" },
       { label: "Product / stock report", to: "/stock" },

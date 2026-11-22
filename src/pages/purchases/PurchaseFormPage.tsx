@@ -6,9 +6,10 @@ import { formatPaise, formatRate, parseRupees } from "../../../shared/money";
 import type { PurchaseDetail } from "../../../shared/purchase";
 import { ScanInput } from "../../components/ScanInput";
 import { SearchPicker } from "../../components/SearchPicker";
-import { Alert, Button, Card, CheckboxField, PageHeader, TextField } from "../../components/ui";
+import { Alert, Button, Card, CheckboxField, HeaderLink, PageHeader, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
+import { PurchasesPage } from "./PurchasesPage";
 
 interface Line {
   key: string;
@@ -27,6 +28,7 @@ export function PurchaseFormPage() {
   const [invoiceDate, setInvoiceDate] = useState(todayIst());
   const [ratesIncludeGst, setRatesIncludeGst] = useState(true);
   const [notes, setNotes] = useState("");
+  const [billTotal, setBillTotal] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [scanMessage, setScanMessage] = useState<{ tone: "error" | "success" | "info"; text: string } | null>(null);
@@ -142,7 +144,7 @@ export function PurchaseFormPage() {
 
   return (
     <div>
-      <PageHeader title="New purchase" actions={<><Link to="/purchases"><Button type="button" variant="secondary">All purchases</Button></Link><Link to="/parties/new"><Button type="button">Add supplier</Button></Link><Link to="/products/new"><Button type="button">Add new product</Button></Link><Link to="/reports/purchases"><Button type="button">Report</Button></Link></>} />
+      <PageHeader title="Purchase entry" actions={<><HeaderLink to="/parties/new">+ New supplier</HeaderLink><HeaderLink to="/products/new">+ New product</HeaderLink><HeaderLink to="/payments/new">Payment out</HeaderLink><HeaderLink to="/reports/purchases">Purchase report</HeaderLink></>} />
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         {formError && <Alert tone="error">{formError}</Alert>}
 
@@ -159,6 +161,15 @@ export function PurchaseFormPage() {
                 errors={errors.supplierId}
               />
               {supplier && <p className="mt-1 text-xs text-slate-500">{interstate ? "Other state: IGST" : "Same state: CGST + SGST"}</p>}
+              {supplier && (
+                <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  <span className={supplier.balancePaise < 0 ? "font-semibold text-red-700" : "text-slate-600"}>
+                    {supplier.balancePaise <= 0 ? `We owe ₹${formatPaise(-supplier.balancePaise)}` : `They owe us ₹${formatPaise(supplier.balancePaise)}`}
+                    {supplier.creditDays > 0 && ` · credit ${supplier.creditDays} days`}
+                  </span>
+                  <Link to={`/statement?party=${supplier.id}`} className="font-semibold text-[var(--erp-blue)] hover:underline">Statement of account</Link>
+                </p>
+              )}
             </div>
             <TextField label="Supplier invoice no." value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} errors={errors.supplierInvoiceNo} />
             <TextField label="Invoice date" type="date" max={todayIst()} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} errors={errors.invoiceDate} />
@@ -268,11 +279,29 @@ export function PurchaseFormPage() {
               <Row label="Round off" value={preview.roundOffPaise} />
               <div className="flex justify-between bg-[var(--erp-row-hover)] px-2 py-2 text-base font-bold text-[var(--erp-blue-dark)]"><dt>Net amount</dt><dd className="tabular-nums">₹{formatPaise(preview.totalPaise)}</dd></div>
             </dl>
+            <div className="mt-3">
+              <TextField label="Supplier bill total ₹ (to check)" inputMode="decimal" value={billTotal} onChange={(e) => setBillTotal(e.target.value)} />
+              {billTotal.trim() !== "" && <BillCheck typed={parseRupees(billTotal)} ours={preview.totalPaise} />}
+            </div>
             <Button type="submit" className="mt-4 w-full" loading={saving}>Save purchase</Button>
           </Card>
         </div>
       </form>
+
+      <h2 className="mb-3 mt-8 text-base font-bold text-slate-900">Purchase bills</h2>
+      <PurchasesPage embedded />
     </div>
+  );
+}
+
+/** Compares the supplier's printed total with ours, to catch a wrong rate or a missed item before saving. */
+function BillCheck({ typed, ours }: { typed: number | null; ours: number }) {
+  if (typed === null) return <p className="mt-1 text-xs text-red-700">Enter the amount in rupees.</p>;
+  const diff = ours - typed;
+  return diff === 0 ? (
+    <p className="mt-1 text-sm font-semibold text-green-700">Matches the supplier's bill.</p>
+  ) : (
+    <p className="mt-1 text-sm font-semibold text-red-700">Differs by ₹{formatPaise(Math.abs(diff))} ({diff > 0 ? "ours is higher" : "ours is lower"}).</p>
   );
 }
 
