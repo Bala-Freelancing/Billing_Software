@@ -33,6 +33,7 @@ export function HomePage() {
           <p className="text-sm text-slate-600">{data ? formatDate(data.today) : "Dashboard"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {data && data.followUpsDue > 0 && <HeaderLink to="/follow-ups">{data.followUpsDue} follow-up(s) due</HeaderLink>}
           {data && data.draftVouchers > 0 && <HeaderLink to="/expenses/approval">{data.draftVouchers} expense(s) to approve</HeaderLink>}
           <Link to="/purchases/new"><Button variant="secondary">Add purchase</Button></Link>
           <Link to="/sales/new"><Button>New sale</Button></Link>

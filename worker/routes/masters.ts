@@ -31,7 +31,7 @@ import type { AppEnv } from "../types";
 
 // ── Row mapping ──────────────────────────────────────────────────────────────
 
-interface SettingsRow {
+export interface SettingsRow {
   shop_name: string;
   gstin: string | null;
   address: string;
@@ -48,7 +48,7 @@ interface SettingsRow {
   updated_at: number;
 }
 
-const toSettings = (r: SettingsRow): ShopSettings => ({
+export const toSettings = (r: SettingsRow): ShopSettings => ({
   shopName: r.shop_name,
   gstin: r.gstin,
   address: r.address,

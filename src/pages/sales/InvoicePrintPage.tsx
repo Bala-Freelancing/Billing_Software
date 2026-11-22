@@ -17,9 +17,19 @@ export function InvoicePrintPage() {
   const error = sale.error ?? shop.error;
   if (error) return <div className="p-8"><Alert tone="error">{error}</Alert></div>;
   if (!sale.data || !shop.data) return <Spinner className="mx-auto mt-10 h-6 w-6" />;
-  const s = sale.data;
-  const sh = shop.data;
+  return <InvoiceView s={sale.data} sh={shop.data} />;
+}
 
+/** Module 9: the invoice behind a WhatsApp share link (/i/:token), no login. */
+export function PublicInvoicePage() {
+  const { token } = useParams();
+  const { data, error } = useFetch<{ sale: SaleDetail; shop: ShopSettings }>(`/public/invoices/${token}`);
+  if (error) return <div className="p-8"><Alert tone="error">This invoice link is not valid. Please ask the shop to send it again.</Alert></div>;
+  if (!data) return <Spinner className="mx-auto mt-10 h-6 w-6" />;
+  return <InvoiceView s={data.sale} sh={data.shop} />;
+}
+
+function InvoiceView({ s, sh }: { s: SaleDetail; sh: ShopSettings }) {
   // GST summary by rate (the HSN/rate-wise breakup auditors expect).
   const byRate = new Map<number, { taxable: number; cgst: number; sgst: number; igst: number }>();
   for (const i of s.items) {
@@ -33,11 +43,11 @@ export function InvoicePrintPage() {
   const totalQty = s.items.reduce((a, i) => a + i.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 print:bg-white print:py-0">
+    <div className="min-h-screen overflow-x-auto bg-slate-100 px-2 py-6 print:overflow-visible print:bg-white print:p-0">
       <div className="mx-auto mb-4 flex max-w-[210mm] justify-end gap-2 print:hidden">
-        <Button onClick={() => window.print()}>Print</Button>
+        <Button onClick={() => window.print()}>Print / Save as PDF</Button>
       </div>
-      <article className="invoice relative mx-auto max-w-[210mm] bg-white p-[10mm] text-[11px] leading-snug text-black shadow print:max-w-none print:p-0 print:shadow-none">
+      <article className="invoice relative mx-auto min-w-[190mm] max-w-[210mm] print:min-w-0 bg-white p-[10mm] text-[11px] leading-snug text-black shadow print:max-w-none print:p-0 print:shadow-none">
         {s.status === "cancelled" && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="-rotate-30 text-7xl font-bold tracking-widest text-red-600/20">CANCELLED</span>

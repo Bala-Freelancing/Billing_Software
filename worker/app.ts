@@ -13,6 +13,7 @@ import { catalogRoutes } from "./routes/catalog";
 import { ledgerRoutes } from "./routes/ledgers";
 import { voucherRoutes } from "./routes/vouchers";
 import { salesRoutes } from "./routes/sales";
+import { followUpRoutes } from "./routes/followups";
 import type { AppEnv } from "./types";
 
 export const app = new Hono<AppEnv>();
@@ -51,6 +52,7 @@ app.route("/api", catalogRoutes);
 app.route("/api", reportRoutes);
 app.route("/api", financialRoutes);
 app.route("/api", statsRoutes);
+app.route("/api", followUpRoutes);
 
 app.notFound((c) => {
   throw new AppError(404, "NOT_FOUND", `No API route for ${c.req.method} ${c.req.path}`);

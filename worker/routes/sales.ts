@@ -23,12 +23,14 @@ import {
   type SalesReturnSummary,
 } from "../../shared/sales";
 import { isUniqueViolation, likePattern, notFound } from "../lib/db";
+import { bytesToBase64Url } from "../lib/encoding";
 import { AppError } from "../lib/errors";
 import { guard, isGuardFailure } from "../lib/guard";
 import { JournalBuilder, journalStatements, readJournal } from "../lib/journal";
 import { audit, auditIfChanged, idParam } from "../lib/route";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
+import { toSettings, type SettingsRow } from "./masters";
 
 /** A raw D1 result row; columns are mapped to typed API objects below. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -182,6 +184,40 @@ salesRoutes
     const sale = await readSale(c.env.DB, idParam(c));
     if (!sale) throw notFound("Invoice");
     return c.json(sale);
+  })
+
+  // Module 9: an unguessable link to view this invoice without logging in, for
+  // sending on WhatsApp. Created once per invoice; later calls return the same link.
+  .post("/sales/:id/share", async (c) => {
+    const id = idParam(c);
+    const db = c.env.DB;
+    const token = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(24)));
+    const [update] = await db.batch([
+      db.prepare("UPDATE sales SET share_token = ?1 WHERE id = ?2 AND share_token IS NULL").bind(token, id),
+      auditIfChanged(c, "sale.shared", { id }),
+    ]);
+    if (!update?.meta.changes) {
+      // Already shared (or no such invoice): return the existing link.
+      const row = await db.prepare("SELECT share_token FROM sales WHERE id = ?1").bind(id).first<{ share_token: string | null }>();
+      if (!row?.share_token) throw notFound("Invoice");
+      return c.json({ token: row.share_token });
+    }
+    return c.json({ token });
+  })
+
+  // Public: the invoice behind a share link. No login; the token is the key.
+  .get("/public/invoices/:token", async (c) => {
+    const token = c.req.param("token");
+    if (!/^[A-Za-z0-9_-]{32}$/.test(token)) throw notFound("Invoice");
+    const db = c.env.DB;
+    const row = await db.prepare("SELECT id FROM sales WHERE share_token = ?1").bind(token).first<{ id: number }>();
+    const sale = row ? await readSale(db, row.id) : null;
+    const shop = await db.prepare("SELECT * FROM shop_settings WHERE id = 1").first<SettingsRow>();
+    if (!sale || !shop) throw notFound("Invoice");
+    c.header("Cache-Control", "no-store");
+    c.header("X-Robots-Tag", "noindex");
+    // The customer sees what is printed on the bill, not the shop's internal journal.
+    return c.json({ sale: { ...sale, journal: [] }, shop: toSettings(shop) });
   })
 
   .post("/sales", validate("json", saleSchema), async (c) => {

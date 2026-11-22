@@ -1,12 +1,49 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { formatDate } from "../../../shared/gst";
-import { stateName } from "../../../shared/india";
+import { stateName, whatsAppLink } from "../../../shared/india";
+import type { ShopSettings } from "../../../shared/masters";
 import { formatPaise, formatRate } from "../../../shared/money";
 import type { SaleDetail } from "../../../shared/sales";
 import { Alert, Badge, Button, Card, PageHeader, Spinner } from "../../components/ui";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import { CancelBox } from "../purchases/PurchaseDetailPage";
+
+/**
+ * Module 9: opens the shop's own WhatsApp with the bill message typed in and a
+ * private link to the invoice; staff press Send. Free: no Meta API.
+ */
+function SendOnWhatsApp({ sale }: { sale: SaleDetail }) {
+  const shop = useFetch<ShopSettings>("/settings/shop");
+  const [error, setError] = useState<string | null>(null);
+  async function send() {
+    setError(null);
+    // Open the tab now, inside the click, so the browser doesn't block it as a pop-up.
+    const tab = window.open("", "_blank");
+    try {
+      const { token } = await api<{ token: string }>(`/sales/${sale.id}/share`, { method: "POST", body: {} });
+      const text =
+        `Vanakkam ${sale.bill.name}, thank you for shopping at ${shop.data?.shopName ?? "our shop"}.\n` +
+        `Invoice ${sale.invoiceNo} dated ${formatDate(sale.invoiceDate)}: ₹${formatPaise(sale.totalPaise)}.\n` +
+        `View or download: ${window.location.origin}/i/${token}`;
+      const href = whatsAppLink(sale.bill.phone, text);
+      if (tab) tab.location.href = href;
+      else window.location.href = href;
+    } catch (err) {
+      tab?.close();
+      setError(err instanceof ApiError ? err.message : "Could not create the invoice link.");
+    }
+  }
+  return (
+    <>
+      <button type="button" onClick={send} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+        Send on WhatsApp
+      </button>
+      {error && <span className="text-sm text-red-700">{error}</span>}
+    </>
+  );
+}
 
 export function SaleDetailPage() {
   const { id } = useParams();
@@ -23,6 +60,7 @@ export function SaleDetailPage() {
         actions={
           <>
             {s.status === "cancelled" ? <Badge tone="red">Cancelled</Badge> : s.collectionType === "credit" ? <Badge tone="amber">Credit</Badge> : <Badge tone="green">Paid</Badge>}
+            {s.status === "posted" && <SendOnWhatsApp sale={s} />}
             <Link to={`/sales/${s.id}/print`} target="_blank"><Button>Print invoice</Button></Link>
             {canReturn && <Link to={`/sales-returns/new?sale=${s.id}`}><Button variant="secondary">Credit note (return)</Button></Link>}
           </>

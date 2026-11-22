@@ -69,9 +69,20 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    title: "Grow your business",
+    icon: "M3 17l6-6 4 4 8-8M15 7h6v6",
+    items: [
+      { label: "Follow-ups", to: "/follow-ups" },
+      { label: "Google reviews", to: "/reviews" },
+    ],
+  },
+  {
     title: "Settings",
     icon: "M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4",
-    items: [{ label: "Shop profile", to: "/settings" }],
+    items: [
+      { label: "Shop profile", to: "/settings" },
+      { label: "Import from Vyapar", to: "/import" },
+    ],
   },
 ];
 

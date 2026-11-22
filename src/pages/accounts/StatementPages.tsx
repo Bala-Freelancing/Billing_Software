@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { formatDate, todayIst } from "../../../shared/gst";
-import { whatsAppNumber } from "../../../shared/india";
+import { whatsAppLink, whatsAppNumber } from "../../../shared/india";
 import type { Party, ShopSettings } from "../../../shared/masters";
 import { formatPaise } from "../../../shared/money";
 import type { OutstandingParty, Statement, VoucherKind } from "../../../shared/vouchers";
@@ -113,10 +113,8 @@ export function StatementPage() {
 
 /** A WhatsApp "please pay" message, opened in the owner's own WhatsApp (no API needed). */
 function reminderLink(p: OutstandingParty, shopName: string): string | null {
-  const to = whatsAppNumber(p.phone);
-  if (!to) return null;
-  const text = `Vanakkam ${p.name}, your balance with ${shopName} is ₹${formatPaise(p.balancePaise)}. Kindly arrange the payment. Thank you.`;
-  return `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+  if (!whatsAppNumber(p.phone)) return null;
+  return whatsAppLink(p.phone, `Vanakkam ${p.name}, your balance with ${shopName} is ₹${formatPaise(p.balancePaise)}. Kindly arrange the payment. Thank you.`);
 }
 
 export function OutstandingPage() {

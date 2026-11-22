@@ -180,6 +180,29 @@ describe("sales invoice", () => {
     expect([r1.status, r2.status]).toEqual([201, 200]);
   });
 
+  it("shares an invoice by an unguessable link that opens without login", async () => {
+    const [a] = await stockFans(1);
+    const sale = await json<SaleDetail>(await post("/api/sales", saleBody({ lines: [{ productId: fan.id, quantity: 1, ratePaise: 400000, serials: [a] }] })));
+    const { token } = await json<{ token: string }>(await post(`/api/sales/${sale.id}/share`, {}));
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    // Sharing again returns the same link and writes no second audit row.
+    expect((await json<{ token: string }>(await post(`/api/sales/${sale.id}/share`, {}))).token).toBe(token);
+    const audits = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'sale.shared' AND details LIKE ?1").bind(`%"id":${sale.id}}%`).first<{ n: number }>();
+    expect(audits?.n).toBe(1);
+
+    const pub = await call(env, `/api/public/invoices/${token}`); // no cookie
+    expect(pub.status).toBe(200);
+    expect(pub.headers.get("Cache-Control")).toBe("no-store");
+    const body = (await pub.json()) as { sale: SaleDetail; shop: ShopSettings };
+    expect(body.sale.invoiceNo).toBe(sale.invoiceNo);
+    expect(body.sale.journal).toEqual([]);
+    expect(body.shop.shopName).toBeTruthy();
+
+    for (const bad of ["short", `${token.slice(0, 31)}!`, "A".repeat(32)]) expect((await call(env, `/api/public/invoices/${bad}`)).status).toBe(404);
+    expect((await call(env, `/api/sales/${sale.id}/share`, { method: "POST", body: {} })).status).toBe(401);
+    expect((await post("/api/sales/999999/share", {})).status).toBe(404);
+  });
+
   it("uses the invoice prefix from settings", async () => {
     const settings = await json<ShopSettings>(await get("/api/settings/shop"));
     await json(await call(env, "/api/settings/shop", { method: "PUT", body: { ...settings, invoicePrefix: "svc" }, cookie }));

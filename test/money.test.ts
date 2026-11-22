@@ -47,3 +47,21 @@ describe("WhatsApp numbers", () => {
     expect(whatsAppNumber("")).toBeNull();
   });
 });
+
+describe("WhatsApp links and review replies", () => {
+  it("opens the chat for a mobile, or asks for a contact otherwise", async () => {
+    const { whatsAppLink } = await import("../shared/india");
+    expect(whatsAppLink("98422 12345", "Hi & bye")).toBe("https://wa.me/919842212345?text=Hi%20%26%20bye");
+    expect(whatsAppLink("", "Hi")).toBe("https://wa.me/?text=Hi");
+  });
+
+  it("drafts thank-you replies for 4–5 stars and leaves lower ratings to the owner", async () => {
+    const { draftReply, variantCount } = await import("../shared/reviews");
+    expect(draftReply(5, "Ravi", "Sri Vishnu Communication")).toBe("Thank you Ravi for the 5-star rating! We're glad you're happy with Sri Vishnu Communication. Do visit us again.");
+    expect(draftReply(4, "Ravi", "SV", "en", 1)).toContain("4-star");
+    expect(draftReply(5, "Ravi", "SV", "en", variantCount("en"))).toBe(draftReply(5, "Ravi", "SV", "en", 0)); // wraps around
+    expect(draftReply(5, "Ravi", "SV", "ta")).toContain("Ravi");
+    expect(draftReply(3, "Ravi", "SV")).toBeNull();
+    expect(draftReply(5, "  ", "SV")).toContain("Thank you friend");
+  });
+});
