@@ -212,6 +212,15 @@ export function CheckboxField({
  * Title strip, as in the previous software: title with the page's quick
  * actions beside it, the breadcrumb on the right, a blue edge on both sides.
  */
+/** A pale blue link button for the actions beside a page title. */
+export function HeaderLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="rounded-lg bg-[var(--erp-row-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--erp-blue)] hover:bg-blue-100">
+      {children}
+    </Link>
+  );
+}
+
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   const { pathname } = useLocation();
   const group = groupFor(pathname);

@@ -250,3 +250,10 @@ export type ScanResult =
   | { kind: "product"; product: Product }
   | { kind: "none"; code: string };
 
+
+/** Workers Free plan: 500 MB per D1 database. */
+export const DB_LIMIT_BYTES = 500 * 1000 * 1000;
+export interface StorageInfo {
+  usedBytes: number;
+  limitBytes: number;
+}

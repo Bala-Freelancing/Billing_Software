@@ -7,7 +7,8 @@ import type { PurchaseSummary } from "../../../shared/purchase";
 import { Alert, Badge, Button, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
 import { useFetch } from "../../lib/useFetch";
 
-export function PurchasesPage() {
+/** Purchase bills list; `embedded` drops the page title (shown under the purchase entry form). */
+export function PurchasesPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("posted");
@@ -22,11 +23,13 @@ export function PurchasesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Purchases"
-        subtitle="Stock received from suppliers."
-        actions={<Link to="/purchases/new"><Button>New purchase</Button></Link>}
-      />
+      {!embedded && (
+        <PageHeader
+          title="Purchases"
+          subtitle="Stock received from suppliers."
+          actions={<Link to="/purchases/new"><Button>New purchase</Button></Link>}
+        />
+      )}
       <div className="mb-4 grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr]">
         <TextField label="" aria-label="Search" placeholder="Supplier or invoice number" value={q} onChange={(e) => { setQ(e.target.value); reset(); }} />
         <TextField label="" aria-label="From date" type="date" value={from} onChange={(e) => { setFrom(e.target.value); reset(); }} />

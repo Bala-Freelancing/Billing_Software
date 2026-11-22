@@ -61,6 +61,7 @@ describe("ledgers", () => {
     expect(all.find((l) => l.name === "Cash")).toMatchObject({ isSystem: true, nature: "asset" });
     expect(rent).toMatchObject({ isSystem: false, nature: "expense", isActive: true });
     expect(group("sundry_debtors").allowsLedgers).toBe(false);
+    for (const name of ["Courier Charges", "Fuel & Travel (Diesel)"]) expect(all.find((l) => l.name === name)?.nature).toBe("expense");
   });
 
   it("creates, renames and deactivates a ledger; refuses duplicates, party groups and system edits", async () => {
@@ -192,6 +193,19 @@ describe("expense vouchers", () => {
     expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: "33ABC", supplierInvoiceNo: "1", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1800, narration: "" }] })).toBe("VALIDATION");
     expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: await validGstin("33"), supplierInvoiceNo: "", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1800, narration: "" }] })).toBe("VALIDATION");
     expect(await bad({ gstBill: true, supplierName: "X", supplierGstin: await validGstin("33"), supplierInvoiceNo: "1", supplierInvoiceDate: today, lines: [{ ledgerId: rent.id, amountPaise: 100, gstRateBp: 1700, narration: "" }] })).toBe("VALIDATION");
+  });
+
+  it("summarises approved expenses by head for a period (drafts excluded)", async () => {
+    const day = "2025-04-10";
+    const a = await json<ExpenseDetail>(await post("/api/expenses", expense({
+      voucherDate: day,
+      lines: [{ ledgerId: rent.id, amountPaise: 1000000, narration: "" }, { ledgerId: salary.id, amountPaise: 300000, narration: "" }],
+    })));
+    await json(await post(`/api/expenses/${a.id}/approve`, { updatedAt: a.updatedAt }));
+    await json(await post("/api/expenses", expense({ voucherDate: day, lines: [{ ledgerId: rent.id, amountPaise: 99900, narration: "draft" }] })));
+    const s = await json<{ totalPaise: number; count: number; byHead: { name: string; amountPaise: number }[] }>(await get(`/api/expenses/summary?from=${day}&to=${day}`));
+    expect(s).toEqual({ totalPaise: 1300000, count: 1, byHead: [{ name: "Rent", amountPaise: 1000000 }, { name: "Salary & Wages", amountPaise: 300000 }] });
+    expect((await get("/api/expenses/summary?from=bad&to=2025-01-01")).status).toBe(400);
   });
 
   it("lists drafts first and needs login", async () => {

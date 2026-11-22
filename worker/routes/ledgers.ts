@@ -17,6 +17,7 @@ import {
   computeExpense,
   expenseListQuery,
   expenseSchema,
+  expenseSummaryQuery,
   ledgerListQuery,
   ledgerSchema,
   rejectSchema,
@@ -24,6 +25,7 @@ import {
   updateLedgerSchema,
   type ExpenseDetail,
   type ExpenseSummary,
+  type ExpenseSummaryReport,
   type Ledger,
   ledgerGroupSchema,
   updateLedgerGroupSchema,
@@ -388,6 +390,28 @@ ledgerRoutes
       total: ((count?.results?.[0] as Row | undefined)?.n as number) ?? 0,
       page,
       pageSize: PAGE_SIZE,
+    };
+    return c.json(body);
+  })
+
+  .get("/expenses/summary", validate("query", expenseSummaryQuery), async (c) => {
+    const { from, to } = c.req.valid("query");
+    const db = c.env.DB;
+    const range = "v.status = 'approved' AND v.voucher_date BETWEEN ?1 AND ?2";
+    const [totals, heads] = await db.batch([
+      db.prepare(`SELECT COALESCE(SUM(v.total_paise), 0) AS t, COUNT(*) AS n FROM general_vouchers v WHERE ${range}`).bind(from, to),
+      db
+        .prepare(
+          `SELECT l.name, SUM(gl.amount_paise) AS amt FROM general_voucher_lines gl JOIN general_vouchers v ON v.id = gl.voucher_id
+             JOIN ledgers l ON l.id = gl.ledger_id WHERE ${range} GROUP BY l.id ORDER BY amt DESC`,
+        )
+        .bind(from, to),
+    ]);
+    const t = (totals?.results?.[0] ?? { t: 0, n: 0 }) as Row;
+    const body: ExpenseSummaryReport = {
+      totalPaise: t.t as number,
+      count: t.n as number,
+      byHead: ((heads?.results ?? []) as Row[]).map((r) => ({ name: r.name as string, amountPaise: r.amt as number })),
     };
     return c.json(body);
   })

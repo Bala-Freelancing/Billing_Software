@@ -11,6 +11,8 @@ function Icon({ d }: { d: string }) {
   );
 }
 
+const ALL_PATHS = NAV.flatMap((g) => g.items.map((i) => i.to));
+
 const link = ({ isActive }: { isActive: boolean }) =>
   `flex min-h-9 items-center gap-3 rounded-lg px-3 text-sm font-medium ${isActive ? "bg-[#26344D] text-white" : "text-[#C6CFDC] hover:bg-white/5 hover:text-white"}`;
 
@@ -44,7 +46,8 @@ function SideMenu({ onSignOut, signingOut, name }: { onSignOut: () => void; sign
               {g.title}
             </p>
             {g.items.map((item) => (
-              <NavLink key={item.to} to={item.to} className={link}>
+              // `end` where a longer menu path sits under this one (/purchases vs /purchases/new), so only one item lights up.
+              <NavLink key={item.to} to={item.to} end={ALL_PATHS.some((p) => p.startsWith(`${item.to}/`))} className={link}>
                 <span className="pl-[30px]">{item.label}</span>
               </NavLink>
             ))}

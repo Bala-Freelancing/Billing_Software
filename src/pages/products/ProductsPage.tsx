@@ -4,7 +4,7 @@ import type { ProductGroup } from "../../../shared/catalog";
 import type { ListResponse, Product, ScanResult } from "../../../shared/masters";
 import { formatPaise, formatRate, marginOnCost } from "../../../shared/money";
 import { ScanInput } from "../../components/ScanInput";
-import { Alert, Badge, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
+import { Alert, Badge, HeaderLink, PageHeader, Pagination, SelectField, Spinner, TextField } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import { ProductFormPanel } from "./ProductFormPanel";
@@ -45,12 +45,8 @@ export function ProductsPage() {
         title="Products"
         actions={
           <>
-            <Link to="/product-groups" className="rounded-lg bg-[var(--erp-row-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--erp-blue)] hover:bg-blue-100">
-              Product groups
-            </Link>
-            <Link to="/stock" className="rounded-lg bg-[var(--erp-row-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--erp-blue)] hover:bg-blue-100">
-              Stock report
-            </Link>
+            <HeaderLink to="/product-groups">Product groups</HeaderLink>
+            <HeaderLink to="/stock">Stock report</HeaderLink>
           </>
         }
       />

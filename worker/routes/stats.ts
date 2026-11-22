@@ -9,7 +9,7 @@ import { todayIst } from "../../shared/gst";
 import { MAX_REPORT_ROWS } from "../../shared/reports";
 import { statsQuery, stockQuery, type NamedAmount, type Overview, type SalesStats, type StockReport, type StockRow } from "../../shared/stats";
 import { likePattern } from "../lib/db";
-import { openBillsSql } from "../lib/outstanding";
+import { openBillsSql, partyBalanceSql } from "../lib/outstanding";
 import { STOCK_CTE } from "../lib/stock";
 import { requireAuth, validate } from "../middleware";
 import type { AppEnv } from "../types";
@@ -77,7 +77,7 @@ statsRoutes
     const monthStart = `${today.slice(0, 8)}01`;
     const [y, m] = today.split("-").map(Number) as [number, number];
     const trendStart = new Date(Date.UTC(y, m - 6, 1)).toISOString().slice(0, 10);
-    const [todayRes, monthRes, collected, money, balances, overdue, stock, trend, recent] = await db.batch([
+    const [todayRes, monthRes, collected, money, balances, overdue, stock, trend, recent, low] = await db.batch([
       db.prepare("SELECT COALESCE(SUM(total_paise), 0) AS t, COUNT(*) AS n FROM sales WHERE status = 'posted' AND invoice_date = ?1").bind(today),
       db
         .prepare(
@@ -94,9 +94,7 @@ statsRoutes
         .bind(today),
       db.prepare(`SELECT ${LEDGER_BAL("cash")} AS cash, ${LEDGER_BAL("bank")} AS bank, (SELECT COUNT(*) FROM general_vouchers WHERE status = 'draft') AS drafts`),
       db.prepare(
-        `SELECT COALESCE(SUM(MAX(b, 0)), 0) AS recv, COALESCE(SUM(MAX(-b, 0)), 0) AS pay FROM (
-           SELECT p.opening_balance_paise + COALESCE((SELECT SUM(jl.debit_paise - jl.credit_paise) FROM journal_lines jl
-                    JOIN journal_entries e ON e.id = jl.entry_id WHERE jl.party_id = p.id AND e.status = 'posted'), 0) AS b FROM parties p)`,
+        `SELECT COALESCE(SUM(MAX(b, 0)), 0) AS recv, COALESCE(SUM(MAX(-b, 0)), 0) AS pay FROM (SELECT ${partyBalanceSql()} AS b FROM parties p)`,
       ),
       db.prepare(`SELECT COALESCE(SUM(outstanding), 0) AS amt, COUNT(DISTINCT party_id) AS n FROM (${openBillsSql("receipt", () => "1")}) WHERE due_date < ?1`).bind(today),
       db
@@ -110,6 +108,13 @@ statsRoutes
         .bind(today),
       db.prepare(MONTHLY_SALES).bind(trendStart, today),
       db.prepare("SELECT id, invoice_no, invoice_date, bill_name, total_paise FROM sales WHERE status = 'posted' ORDER BY id DESC LIMIT 6"),
+      db
+        .prepare(
+          `${STOCK_CTE}
+           SELECT p.id, p.brand || ' ' || p.name AS name, COALESCE(q.q, 0) AS q FROM products p LEFT JOIN qty q ON q.product_id = p.id
+            WHERE p.is_active = 1 AND COALESCE(q.q, 0) <= 2 ORDER BY COALESCE(q.q, 0), name LIMIT 6`,
+        )
+        .bind(today),
     ]);
     const t = first(todayRes), mo = first(monthRes), mn = first(money), bal = first(balances), od = first(overdue), st = first(stock);
     const trendMap = new Map(rows(trend).map((r) => [r.month as string, r.total as number]));
@@ -128,6 +133,7 @@ statsRoutes
       outOfStock: st.out_of_stock,
       draftVouchers: mn.drafts,
       trend: monthsBetween(trendStart, today).map((month) => ({ month, salesPaise: trendMap.get(month) ?? 0 })),
+      lowStockItems: rows(low).map((r) => ({ id: r.id, name: r.name, inStock: r.q })),
       recentSales: rows(recent).map((r) => ({ id: r.id, invoiceNo: r.invoice_no, date: r.invoice_date, party: r.bill_name, totalPaise: r.total_paise })),
     };
     return c.json(body);

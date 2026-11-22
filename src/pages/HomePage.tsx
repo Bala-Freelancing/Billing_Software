@@ -4,86 +4,112 @@ import { formatPaise } from "../../shared/money";
 import type { Overview } from "../../shared/stats";
 import { useAuth } from "../auth/useAuth";
 import { BarChart, monthLabel } from "../components/BarChart";
-import { Alert, Card } from "../components/ui";
+import { Alert, Button, Card, HeaderLink } from "../components/ui";
 import { useFetch } from "../lib/useFetch";
 
-function Metric({ label, value, note, to }: { label: string; value: string; note?: string | undefined; to?: string }) {
-  const body = (
-    <>
-      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">{value}</p>
-      {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
-    </>
+function Metric({ label, value, note, tone, to }: { label: string; value: string; note?: string | undefined; tone?: string; to: string }) {
+  return (
+    <Link to={to} className="erp-panel block p-5 transition hover:bg-slate-50">
+      <p className="text-sm text-slate-600">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tabular-nums tracking-tight ${tone ?? "text-slate-900"}`}>{value}</p>
+      {note && <p className="mt-1 text-sm text-slate-500">{note}</p>}
+    </Link>
   );
-  return to ? <Link to={to} className="block bg-white p-5 transition hover:bg-slate-50">{body}</Link> : <div className="bg-white p-5">{body}</div>;
 }
 
-const QUICK_ACTIONS = [
-  { label: "New sale", to: "/sales/new", hint: "Scan serials to bill a retailer or walk-in" },
-  { label: "New receipt", to: "/receipts/new", hint: "Money received against bills" },
-  { label: "New purchase", to: "/purchases/new", hint: "Receive Havells stock by scanning serials" },
-  { label: "Add retailer", to: "/parties/new", hint: "A new shop that buys from you" },
-];
+const rupees = (v: number | undefined) => (v === undefined ? "—" : `₹${formatPaise(v)}`);
 
 export function HomePage() {
   const { state } = useAuth();
   const navigate = useNavigate();
   const name = state.status === "authenticated" ? state.user.displayName : "";
   const { data, error } = useFetch<Overview>("/stats/overview");
-  const rupees = (v: number | undefined) => (v === undefined ? "—" : `₹${formatPaise(v)}`);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-slate-500">Dashboard{data ? ` · ${formatDate(data.today)}` : ""}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">Welcome back, {name}</h1>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back, {name}</h1>
+          <p className="text-sm text-slate-600">{data ? formatDate(data.today) : "Dashboard"}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {data && data.draftVouchers > 0 && <HeaderLink to="/expenses/approval">{data.draftVouchers} expense(s) to approve</HeaderLink>}
+          <Link to="/purchases/new"><Button variant="secondary">Add purchase</Button></Link>
+          <Link to="/sales/new"><Button>New sale</Button></Link>
+        </div>
       </div>
 
       {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Sales today" value={rupees(data?.salesToday.totalPaise)} note={data ? `${data.salesToday.count} invoice(s)` : undefined} to="/reports/sales" />
-        <Metric label="This month" value={rupees(data?.salesMonth.totalPaise)} note={data ? `${data.salesMonth.count} invoice(s), net of returns` : undefined} to="/reports/sales" />
-        <Metric label="Collected today" value={rupees(data?.collectedTodayPaise)} note="Cash bills + receipts" to="/receipts" />
-        <Metric label="Cash · Bank" value={data ? `₹${formatPaise(data.cashPaise)}` : "—"} note={data ? `Bank ₹${formatPaise(data.bankPaise)}` : undefined} to="/receipts" />
-        <Metric label="Receivables" value={rupees(data?.receivablePaise)} note={data?.overdue.amountPaise ? `₹${formatPaise(data.overdue.amountPaise)} overdue · ${data.overdue.parties} part(ies)` : "Nothing overdue"} to="/outstanding" />
-        <Metric label="Payables" value={rupees(data?.payablePaise)} note="Owed to suppliers" to="/outstanding" />
-        <Metric label="Stock value" value={rupees(data?.stockValuePaise)} note="At average cost (excl. GST)" to="/stock" />
-        <Metric label="Low / out of stock" value={data ? `${data.lowStock} / ${data.outOfStock}` : "—"} note="2 or fewer left / none left" to="/stock" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          label="To collect"
+          value={rupees(data?.receivablePaise)}
+          tone="text-green-700"
+          note={data ? (data.overdue.amountPaise ? `₹${formatPaise(data.overdue.amountPaise)} overdue · ${data.overdue.parties} retailer(s)` : "Nothing overdue") : undefined}
+          to="/outstanding"
+        />
+        <Metric label="To pay" value={rupees(data?.payablePaise)} tone="text-red-700" note="Owed to suppliers" to="/outstanding?kind=payment" />
+        <Metric label="Sales this month" value={rupees(data?.salesMonth.totalPaise)} note={data ? `${data.salesMonth.count} invoice(s), net of returns` : undefined} to="/reports/sales" />
+        <Metric label="Cash + bank" value={data ? rupees(data.cashPaise + data.bankPaise) : "—"} note={data ? `Cash ₹${formatPaise(data.cashPaise)} · Bank ₹${formatPaise(data.bankPaise)}` : undefined} to="/statement" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <Card className="p-5">
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
+        <Card>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Sales, last 6 months</h2>
-            <Link to="/reports/sales" className="text-xs font-semibold text-[var(--erp-blue)] hover:underline">Sales report →</Link>
+            <h2 className="font-semibold text-slate-900">Sales, last 6 months</h2>
+            <Link to="/reports/sales" className="text-sm font-semibold text-[var(--erp-blue)] hover:underline">Sales report</Link>
           </div>
           {data && data.trend.every((t) => t.salesPaise === 0) && <p className="py-16 text-center text-sm text-slate-500">No sales yet. Your monthly sales will appear here.</p>}
-          {data && data.trend.some((t) => t.salesPaise !== 0) && <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-[var(--erp-blue)]", values: data.trend.map((t) => t.salesPaise) }]} />}
+          {data && data.trend.some((t) => t.salesPaise !== 0) && (
+            <BarChart labels={data.trend.map((t) => monthLabel(t.month))} series={[{ name: "Sales", className: "fill-[var(--erp-blue)]", values: data.trend.map((t) => t.salesPaise) }]} />
+          )}
         </Card>
-        <Card className="p-5">
-          <h2 className="mb-3 text-sm font-semibold">Recent invoices</h2>
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">Low stock</h2>
+            <Link to="/stock" className="text-sm font-semibold text-[var(--erp-blue)] hover:underline">Stock report</Link>
+          </div>
           <ul className="divide-y divide-slate-100 text-sm">
-            {data?.recentSales.length === 0 && <li className="py-3 text-slate-500">No invoices yet.</li>}
-            {data?.recentSales.map((s) => (
-              <li key={s.id} className="flex cursor-pointer justify-between py-2.5 hover:bg-slate-50" onClick={() => navigate(`/sales/${s.id}`)}>
-                <span><span className="font-mono">{s.invoiceNo}</span> <span className="text-slate-500">· {s.party}</span></span>
-                <span className="tabular-nums">₹{formatPaise(s.totalPaise)}</span>
+            {data?.lowStockItems.length === 0 && <li className="py-3 text-slate-500">Nothing running low.</li>}
+            {data?.lowStockItems.map((p) => (
+              <li key={p.id} className="flex justify-between gap-3 py-2.5">
+                <Link to={`/products/${p.id}`} className="truncate hover:underline">{p.name}</Link>
+                <span className={`shrink-0 font-semibold ${p.inStock <= 0 ? "text-red-700" : "text-amber-700"}`}>{p.inStock <= 0 ? "Out of stock" : `${p.inStock} left`}</span>
               </li>
             ))}
           </ul>
         </Card>
       </div>
 
-      <div className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 md:grid-cols-4">
-        {QUICK_ACTIONS.map((a) => (
-          <Link key={a.to} to={a.to} className="group bg-white p-5 transition hover:bg-slate-50">
-            <p className="font-medium text-slate-900">
-              {a.label} <span className="inline-block transition group-hover:translate-x-0.5">→</span>
-            </p>
-            <p className="mt-1 text-sm text-slate-500">{a.hint}</p>
-          </Link>
-        ))}
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr] [&>*]:min-w-0">
+        <Card>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">Recent invoices</h2>
+            <Link to="/sales" className="text-sm font-semibold text-[var(--erp-blue)] hover:underline">All sales</Link>
+          </div>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {data?.recentSales.length === 0 && <li className="py-3 text-slate-500">No invoices yet.</li>}
+            {data?.recentSales.map((s) => (
+              <li key={s.id} className="flex cursor-pointer justify-between gap-3 py-2.5 hover:bg-slate-50" onClick={() => navigate(`/sales/${s.id}`)}>
+                <span className="truncate">
+                  <Link to={`/sales/${s.id}`} className="font-semibold text-slate-900" onClick={(e) => e.stopPropagation()}>{s.invoiceNo}</Link>
+                  <span className="text-slate-500"> · {s.party} · {formatDate(s.date)}</span>
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums">₹{formatPaise(s.totalPaise)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <h2 className="mb-3 font-semibold text-slate-900">Today</h2>
+          <dl className="divide-y divide-slate-100 text-sm">
+            <div className="flex justify-between py-2.5"><dt className="text-slate-600">Sales</dt><dd className="font-semibold tabular-nums">{rupees(data?.salesToday.totalPaise)}{data && <span className="font-normal text-slate-500"> · {data.salesToday.count}</span>}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-slate-600">Collected</dt><dd className="font-semibold tabular-nums">{rupees(data?.collectedTodayPaise)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-slate-600">Stock value (avg. cost)</dt><dd className="font-semibold tabular-nums">{rupees(data?.stockValuePaise)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-slate-600">Low / out of stock</dt><dd className="font-semibold tabular-nums">{data ? `${data.lowStock} / ${data.outOfStock}` : "—"}</dd></div>
+          </dl>
+        </Card>
       </div>
     </div>
   );

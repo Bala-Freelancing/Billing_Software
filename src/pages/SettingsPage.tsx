@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { gstinProblem, isStateCode, STATES } from "../../shared/india";
-import type { GstSlab, ShopSettings } from "../../shared/masters";
+import type { GstSlab, ShopSettings, StorageInfo } from "../../shared/masters";
 import { formatRate } from "../../shared/money";
 import { Alert, Badge, Button, Card, PageHeader, SelectField, Spinner, TextField } from "../components/ui";
 import { api, ApiError } from "../lib/api";
@@ -190,10 +190,35 @@ function GstSlabsManager() {
   );
 }
 
+/** How full the database is against the free plan's 500 MB, with a warning from 80%. */
+function StorageCard() {
+  const { data } = useFetch<StorageInfo>("/settings/storage");
+  if (!data) return null;
+  const pct = Math.min(100, (data.usedBytes / data.limitBytes) * 100);
+  const mb = (b: number) => `${(b / 1_000_000).toFixed(1)} MB`;
+  return (
+    <Card>
+      <h2 className="mb-2 text-lg font-semibold text-slate-900">Database space</h2>
+      <p className="text-sm text-slate-600">
+        {mb(data.usedBytes)} of {mb(data.limitBytes)} used ({pct.toFixed(1)}%)
+      </p>
+      <div className="mt-2 h-3 rounded-full bg-slate-100" role="img" aria-label={`${pct.toFixed(1)}% used`}>
+        <div className={`h-3 rounded-full ${pct >= 80 ? "bg-red-600" : "bg-[var(--erp-blue)]"}`} style={{ width: `${Math.max(1, pct)}%` }} />
+      </div>
+      {pct >= 80 && (
+        <div className="mt-3">
+          <Alert tone="error">The database is over 80% full. Plan the move to more space now (the paid plan or an archive database) before billing stops at 100%.</Alert>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   return (
     <div className="max-w-3xl space-y-8">
       <PageHeader title="Shop Profile" subtitle="Shop details appear on every invoice." />
+      <StorageCard />
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Shop details</h2>
         <ShopSettingsSection />

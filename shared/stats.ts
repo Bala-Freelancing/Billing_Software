@@ -36,6 +36,8 @@ export interface Overview {
   /** Last 6 months incl. the current one, net of returns (incl. GST). */
   trend: { month: string; salesPaise: number }[];
   recentSales: { id: number; invoiceNo: string; date: string; party: string; totalPaise: number }[];
+  /** Up to 6 active products with 2 or fewer in stock, emptiest first. */
+  lowStockItems: { id: number; name: string; inStock: number }[];
 }
 
 export interface NamedAmount {
