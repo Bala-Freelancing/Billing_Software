@@ -19,6 +19,9 @@ import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { PartiesPage } from "./pages/parties/PartiesPage";
 import { ReportsHubPage } from "./pages/reports/ReportsHubPage";
+import { FollowUpsPage } from "./pages/FollowUpsPage";
+import { ImportPage } from "./pages/ImportPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
 import { ProductsPage } from "./pages/products/ProductsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { OpeningStockPage } from "./pages/purchases/OpeningStockPage";
@@ -27,7 +30,7 @@ import { PurchaseFormPage } from "./pages/purchases/PurchaseFormPage";
 import { PurchaseReturnFormPage } from "./pages/purchases/PurchaseReturnFormPage";
 import { PurchaseReturnsPage } from "./pages/purchases/PurchaseReturnsPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
-import { InvoicePrintPage } from "./pages/sales/InvoicePrintPage";
+import { InvoicePrintPage, PublicInvoicePage } from "./pages/sales/InvoicePrintPage";
 import { SaleDetailPage } from "./pages/sales/SaleDetailPage";
 import { SaleFormPage } from "./pages/sales/SaleFormPage";
 import { SalesPage } from "./pages/sales/SalesPage";
@@ -39,6 +42,8 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     children: [
       { element: <GuestOnly />, children: [{ path: "/login", element: <LoginPage /> }] },
+      // Public: an invoice sent on WhatsApp. No login; the link's token is the key.
+      { path: "/i/:token", element: <PublicInvoicePage /> },
       {
         element: <RequireAuth />,
         children: [
@@ -93,6 +98,9 @@ const router = createBrowserRouter([
               { path: "/expenses/:id", element: <ExpenseDetailPage /> },
               { path: "/expenses/:id/edit", element: <ExpenseFormPage key="edit" /> },
               { path: "/account", element: <AccountPage /> },
+              { path: "/follow-ups", element: <FollowUpsPage /> },
+              { path: "/reviews", element: <ReviewsPage /> },
+              { path: "/import", element: <ImportPage /> },
             ],
           },
         ],

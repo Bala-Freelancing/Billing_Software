@@ -74,3 +74,12 @@ export function whatsAppNumber(phone: string): string | null {
   const ten = d.length === 12 && d.startsWith("91") ? d.slice(2) : d;
   return /^[6-9]\d{9}$/.test(ten) ? `91${ten}` : null;
 }
+
+/**
+ * A link that opens WhatsApp with `text` typed in, from the shop's own account
+ * (no paid API): straight into the chat for an Indian mobile, else WhatsApp asks
+ * which contact to send to.
+ */
+export function whatsAppLink(phone: string, text: string): string {
+  return `https://wa.me/${whatsAppNumber(phone) ?? ""}?text=${encodeURIComponent(text)}`;
+}

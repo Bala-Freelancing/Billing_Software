@@ -22,6 +22,7 @@ export type AuditAction =
   | "purchase_return.created"
   | "purchase_return.cancelled"
   | "sale.created"
+  | "sale.shared"
   | "sale.cancelled"
   | "sales_return.created"
   | "sales_return.cancelled"

@@ -77,7 +77,7 @@ statsRoutes
     const monthStart = `${today.slice(0, 8)}01`;
     const [y, m] = today.split("-").map(Number) as [number, number];
     const trendStart = new Date(Date.UTC(y, m - 6, 1)).toISOString().slice(0, 10);
-    const [todayRes, monthRes, collected, money, balances, overdue, stock, trend, recent, low] = await db.batch([
+    const [todayRes, monthRes, collected, money, balances, overdue, stock, trend, recent, low, followUps] = await db.batch([
       db.prepare("SELECT COALESCE(SUM(total_paise), 0) AS t, COUNT(*) AS n FROM sales WHERE status = 'posted' AND invoice_date = ?1").bind(today),
       db
         .prepare(
@@ -115,6 +115,7 @@ statsRoutes
             WHERE p.is_active = 1 AND COALESCE(q.q, 0) <= 2 ORDER BY COALESCE(q.q, 0), name LIMIT 6`,
         )
         .bind(today),
+      db.prepare("SELECT COUNT(*) AS n FROM follow_ups WHERE status = 'open' AND due_date <= ?1").bind(today),
     ]);
     const t = first(todayRes), mo = first(monthRes), mn = first(money), bal = first(balances), od = first(overdue), st = first(stock);
     const trendMap = new Map(rows(trend).map((r) => [r.month as string, r.total as number]));
@@ -133,6 +134,7 @@ statsRoutes
       outOfStock: st.out_of_stock,
       draftVouchers: mn.drafts,
       trend: monthsBetween(trendStart, today).map((month) => ({ month, salesPaise: trendMap.get(month) ?? 0 })),
+      followUpsDue: first(followUps).n,
       lowStockItems: rows(low).map((r) => ({ id: r.id, name: r.name, inStock: r.q })),
       recentSales: rows(recent).map((r) => ({ id: r.id, invoiceNo: r.invoice_no, date: r.invoice_date, party: r.bill_name, totalPaise: r.total_paise })),
     };
